@@ -48,20 +48,20 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		})
 		return
 	}
-	var dto dto.RegisterRequest
-	if err = json.Unmarshal(b, &dto); err != nil {
+	var reqDTO dto.RegisterRequest
+	if err = json.Unmarshal(b, &reqDTO); err != nil {
 		responseCreator.BadRequest(w, map[string]interface{}{
 			"reason": "Body is malformed",
 		})
 		return
 	}
-	if dto.Name == "" {
+	if reqDTO.Name == "" {
 		responseCreator.BadRequest(w, map[string]interface{}{
 			"reason": "Name is required",
 		})
 		return
 	}
-	switch strings.ToLower(dto.Team) {
+	switch strings.ToLower(reqDTO.Team) {
 	case "defender":
 	case "attacker":
 	default:
@@ -70,15 +70,23 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		})
 		return
 	}
+	information := bus.RegistrationEvent{
+		Name: reqDTO.Name,
+		Team: reqDTO.Team,
+		ID:   string(uuid.NewString()),
+	}
 	c.bus.Send(&bus.BusEvent{
-		Type: bus.RegisterEventType,
-		Information: bus.RegistrationEvent{
-			Name: dto.Name,
-			Team: dto.Team,
-			ID:   string(uuid.NewString()),
-		},
+		Type:        bus.RegisterEventType,
+		Information: information,
 	})
-	responseCreator.Empty200(w)
+	responseCreator.OK(w, dto.RegisterResponse{
+		CenturionResponse: dto.CenturionResponse{
+			Message: "Success",
+			Code:    200,
+			Meta:    nil,
+		},
+		ID: information.ID,
+	})
 }
 
 // Creates a new router

@@ -42,3 +42,17 @@ func (rc *ResponseCreator) Empty200(w http.ResponseWriter) {
 	}
 	w.Write(b)
 }
+
+// Describes a 200 with a given body
+func (rc *ResponseCreator) OK(w http.ResponseWriter, body interface{}) {
+	rc.jsonResponse(w)
+	b, err := json.Marshal(dto.CenturionResponse{
+		Message: "",
+		Code:    200,
+		Meta:    map[string]interface{}{"data": body},
+	})
+	if err != nil {
+		panic(err)
+	}
+	w.Write(b)
+}
