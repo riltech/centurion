@@ -28,3 +28,17 @@ func (rc *ResponseCreator) BadRequest(w http.ResponseWriter, meta map[string]int
 	}
 	w.Write(b)
 }
+
+// Describes an empty 200 response
+func (rc *ResponseCreator) Empty200(w http.ResponseWriter) {
+	rc.jsonResponse(w)
+	b, err := json.Marshal(dto.CenturionResponse{
+		Message: "",
+		Code:    200,
+		Meta:    nil,
+	})
+	if err != nil {
+		panic(err)
+	}
+	w.Write(b)
+}

@@ -78,6 +78,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 			ID:   string(uuid.NewString()),
 		},
 	})
+	responseCreator.Empty200(w)
 }
 
 // Creates a new router
