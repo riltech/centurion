@@ -1,5 +1,7 @@
 package core
 
+import "github.com/riltech/centurion/core/bus"
+
 // Describes a dashboard interface
 type IDashboard interface {
 	// Starts the dashboard process [This is a blocking call]
@@ -10,7 +12,7 @@ type IDashboard interface {
 
 // Dashboard implementation
 type Dashboard struct {
-	bus IBus
+	bus bus.IBus
 }
 
 // Interface check
@@ -20,6 +22,6 @@ func (d Dashboard) Start() {}
 func (d Dashboard) Stop()  {}
 
 // Constructor for dashboard
-func NewDashboard(bus IBus) IDashboard {
+func NewDashboard(bus bus.IBus) IDashboard {
 	return Dashboard{bus}
 }

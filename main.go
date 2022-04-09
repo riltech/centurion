@@ -2,17 +2,18 @@ package main
 
 import (
 	"github.com/riltech/centurion/core"
+	"github.com/riltech/centurion/core/bus"
 )
 
 func main() {
 	exitHandler := core.NewExitHandler()
-	bus := core.NewBus()
+	bus := bus.NewBus()
 	engine, dashboard := core.NewEngine(bus), core.NewDashboard(bus)
 	exitHandler.On(func() {
 		engine.Stop()
 		dashboard.Stop()
 		bus.Stop()
 	})
-	go engine.Start()
-	dashboard.Start()
+	go dashboard.Start()
+	engine.Start()
 }

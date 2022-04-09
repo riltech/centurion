@@ -1,15 +1,10 @@
-package core
+package bus
 
 import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
 )
-
-// Describes a message sent to the bus
-type BusEvent struct {
-	Type string
-}
 
 // Describes the interface of the common event bus
 type IBus interface {
