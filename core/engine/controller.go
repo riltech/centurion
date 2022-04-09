@@ -10,6 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/engine/dto"
+	"github.com/riltech/centurion/core/player"
 )
 
 // Describes the interface of the engine controller
@@ -20,28 +21,22 @@ type IConroller interface {
 
 // Controller implementation
 type Controller struct {
-	bus bus.IBus
+	bus     bus.IBus
+	service IService
 }
 
 // Constructor for the engine controller
-func NewController(bus bus.IBus) IConroller {
+func NewController(bus bus.IBus, service IService) IConroller {
 	return &Controller{
 		bus,
+		service,
 	}
 }
 
 // Handles /team/register request
 func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var responseCreator *ResponseCreator
-	body, err := r.GetBody()
-	if err != nil {
-		responseCreator.BadRequest(w, map[string]interface{}{
-			"reason": "Body is malformed",
-		})
-		return
-	}
-	var b []byte
-	b, err = ioutil.ReadAll(body)
+	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		responseCreator.BadRequest(w, map[string]interface{}{
 			"reason": "Body is malformed",
@@ -75,8 +70,18 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		Team: reqDTO.Team,
 		ID:   string(uuid.NewString()),
 	}
+	if exists := c.service.IsPlayerExist(&player.Model{
+		Name: reqDTO.Name,
+		Team: reqDTO.Team,
+		ID:   information.ID,
+	}); exists {
+		responseCreator.BadRequest(w, map[string]interface{}{
+			"reason": "Player already exists",
+		})
+		return
+	}
 	c.bus.Send(&bus.BusEvent{
-		Type:        bus.RegisterEventType,
+		Type:        bus.EventTypeRegistration,
 		Information: information,
 	})
 	responseCreator.OK(w, dto.RegisterResponse{

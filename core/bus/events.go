@@ -3,7 +3,7 @@ package bus
 import "fmt"
 
 // Enums
-const RegisterEventType = "registration"
+const EventTypeRegistration = "registration"
 
 // Describes a message sent to the bus
 type BusEvent struct {
@@ -13,7 +13,7 @@ type BusEvent struct {
 
 // Decodes a registration event
 func (be BusEvent) DecodeRegistration() (*RegistrationEvent, error) {
-	if be.Type != RegisterEventType {
+	if be.Type != EventTypeRegistration {
 		return nil, fmt.Errorf("Event is not registration")
 	}
 	if conv, ok := be.Information.(RegistrationEvent); ok {

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/riltech/centurion/core/player"
 )
@@ -29,6 +30,11 @@ func (r *Repository) AddPlayer(user player.Model) error {
 	if r.players == nil {
 		r.players = []player.Model{user}
 		return nil
+	}
+	for _, p := range r.players {
+		if p.ID == user.ID || strings.ToLower(p.Name) == strings.ToLower(user.Name) {
+			return fmt.Errorf("Cannot use the same id (expected, got) (%s, %s) or username (%s, %s)", user.ID, p.ID, user.Name, p.Name)
+		}
 	}
 	r.players = append(r.players, user)
 	return nil
