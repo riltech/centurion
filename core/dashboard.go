@@ -30,11 +30,21 @@ func (d Dashboard) Start() {
 	}
 	defer ui.Close()
 
-	p := widgets.NewParagraph()
-	p.Text = "Hello World!"
-	p.SetRect(0, 0, 25, 5)
+	grid := ui.NewGrid()
+	termWidth, termHeight := ui.TerminalDimensions()
+	grid.SetRect(0, 0, termWidth, termHeight)
 
-	ui.Render(p)
+	p := widgets.NewParagraph()
+	p.Text = "Welcome to Riltech's Centurion!"
+	p.Title = "Game is on!"
+
+	grid.Set(
+		ui.NewRow(1,
+			ui.NewCol(1, p),
+		),
+	)
+
+	ui.Render(grid)
 
 	for e := range ui.PollEvents() {
 		if e.Type == ui.KeyboardEvent {
