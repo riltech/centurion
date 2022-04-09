@@ -14,6 +14,6 @@ func main() {
 		dashboard.Stop()
 		bus.Stop()
 	})
-	go dashboard.Start()
-	engine.Start()
+	dashboard.Start()
+	go engine.Start()
 }

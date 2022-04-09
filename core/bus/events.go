@@ -4,6 +4,7 @@ import "fmt"
 
 // Enums
 const EventTypeRegistration = "registration"
+const EventTypePlayerJoined = "player_joined"
 
 // Describes a message sent to the bus
 type BusEvent struct {
@@ -22,9 +23,26 @@ func (be BusEvent) DecodeRegistration() (*RegistrationEvent, error) {
 	return nil, fmt.Errorf("Event is not registration")
 }
 
+// Decodes a player joined event
+func (be BusEvent) DecodePlayerJoinedEvent() (*PlayerJoinedEvent, error) {
+	if be.Type != EventTypePlayerJoined {
+		return nil, fmt.Errorf("Event is not player joined")
+	}
+	if conv, ok := be.Information.(PlayerJoinedEvent); ok {
+		return &conv, nil
+	}
+	return nil, fmt.Errorf("Event is not player joined")
+}
+
 // Describes a registration event
 type RegistrationEvent struct {
 	Name string
 	Team string
 	ID   string
+}
+
+// Player joined the live game event
+type PlayerJoinedEvent struct {
+	Name string
+	Team string
 }
