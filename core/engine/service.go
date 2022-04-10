@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/player"
@@ -15,15 +14,13 @@ type IService interface {
 	Start()
 	// Stops synchronous processing of the service towards the event bus
 	Stop()
-	// Returns if a given player already exists or not
-	IsPlayerExist(*player.Model) bool
 }
 
 // Engine service implementation
 type Service struct {
 	// Layer dependencies
-	bus        bus.IBus
-	repository IRepository
+	bus              bus.IBus
+	playerRepository player.IRepository
 
 	// Internal dependencies
 	stop chan uint8
@@ -53,7 +50,7 @@ func (s Service) registration(e *bus.RegistrationEvent) error {
 	if e == nil {
 		return fmt.Errorf("Cannot process nil for registration")
 	}
-	return s.repository.AddPlayer(player.Model{
+	return s.playerRepository.AddPlayer(player.Model{
 		ID:   e.ID,
 		Name: e.Name,
 		Team: e.Team,
@@ -80,26 +77,11 @@ func (s Service) routeEvent(e bus.BusEvent) {
 	}
 }
 
-func (s Service) IsPlayerExist(p *player.Model) bool {
-	if p == nil {
-		return false
-	}
-	for _, storedPlayer := range s.repository.GetPlayers() {
-		if storedPlayer.ID == p.ID {
-			return true
-		}
-		if strings.ToLower(storedPlayer.Name) == strings.ToLower(p.Name) {
-			return true
-		}
-	}
-	return false
-}
-
 // Interface check
 var _ IService = (*Service)(nil)
 
 // Constructor for the engine service
-func NewService(bus bus.IBus, repo IRepository) IService {
+func NewService(bus bus.IBus, repo player.IRepository) IService {
 	return &Service{
 		bus,
 		repo,

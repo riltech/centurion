@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/riltech/centurion/core/bus"
+	"github.com/riltech/centurion/core/challenge"
 	"github.com/riltech/centurion/core/engine/dto"
 	"github.com/riltech/centurion/core/player"
 	"github.com/sirupsen/logrus"
@@ -22,15 +23,19 @@ type IConroller interface {
 
 // Controller implementation
 type Controller struct {
-	bus     bus.IBus
-	service IService
+	bus              bus.IBus
+	engineService    IService
+	playerService    player.IService
+	challengeService challenge.IService
 }
 
 // Constructor for the engine controller
-func NewController(bus bus.IBus, service IService) IConroller {
+func NewController(bus bus.IBus, engineService IService, playerService player.IService, challengeService challenge.IService) IConroller {
 	return &Controller{
 		bus,
-		service,
+		engineService,
+		playerService,
+		challengeService,
 	}
 }
 
@@ -43,6 +48,33 @@ func (c Controller) cleanUp(w http.ResponseWriter) {
 	}
 	logrus.Error(err)
 	(*ResponseCreator)(nil).InternalServerError(w)
+}
+
+// Returns the available challenges
+func (c Controller) FetchChallanges(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var response *ResponseCreator
+	defer c.cleanUp(w)
+	challenges := c.challengeService.GetChallenges()
+	dtoChallenges := []*dto.ChallengeResponseDTO{}
+	for _, challenge := range challenges {
+		dtoChallenges = append(dtoChallenges, &dto.ChallengeResponseDTO{
+			ID:          challenge.ID,
+			Name:        challenge.Name,
+			Description: challenge.Description,
+			Example: dto.ChallengeExampleDTO{
+				Hints:    challenge.Example.Hints,
+				Solution: challenge.Example.Solution,
+			},
+		})
+	}
+	response.OK(w, dto.FetchChallengesResponse{
+		CenturionResponse: dto.CenturionResponse{
+			Message: "Success",
+			Code:    200,
+			Meta:    nil,
+		},
+		Challenges: dtoChallenges,
+	})
 }
 
 // Handles /team/register request
@@ -83,7 +115,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		Team: reqDTO.Team,
 		ID:   string(uuid.NewString()),
 	}
-	if exists := c.service.IsPlayerExist(&player.Model{
+	if exists := c.playerService.IsPlayerExist(&player.Model{
 		Name: reqDTO.Name,
 		Team: reqDTO.Team,
 		ID:   information.ID,
@@ -111,5 +143,6 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 func (c Controller) GetRouter() *httprouter.Router {
 	router := httprouter.New()
 	router.POST("/team/register", c.Register)
+	router.GET("/challenges", c.FetchChallanges)
 	return router
 }

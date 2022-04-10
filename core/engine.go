@@ -8,7 +8,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/riltech/centurion/core/bus"
+	"github.com/riltech/centurion/core/challenge"
 	"github.com/riltech/centurion/core/engine"
+	"github.com/riltech/centurion/core/player"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,9 +29,8 @@ type Engine struct {
 	server *http.Server
 
 	// Internal dependencies
-	ctrl       engine.IConroller
-	service    engine.IService
-	repository engine.IRepository
+	ctrl    engine.IConroller
+	service engine.IService
 }
 
 // Interface check
@@ -62,17 +63,19 @@ func (e Engine) Stop() {
 
 // Constructor for Engine
 func NewEngine(bus bus.IBus) IEngine {
-	repo := engine.NewRepository()
-	service := engine.NewService(bus, repo)
+	playerRepo := player.NewRepository()
+	playerService := player.NewService(playerRepo)
+	engineService := engine.NewService(bus, playerRepo)
+	challengeRepo := challenge.NewRepository()
+	challengeService := challenge.NewService(challengeRepo)
 	return &Engine{
 		// Available after start is called
 		router: nil,
 		server: nil,
 
 		// Available as the instance is created
-		bus:        bus,
-		ctrl:       engine.NewController(bus, service),
-		service:    service,
-		repository: repo,
+		bus:     bus,
+		ctrl:    engine.NewController(bus, engineService, playerService, challengeService),
+		service: engineService,
 	}
 }
