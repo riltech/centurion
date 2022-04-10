@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/riltech/centurion/core/engine/dto"
+	"github.com/sirupsen/logrus"
 )
 
 // Static pointer struct to provide functions for consistent responses
@@ -24,7 +25,23 @@ func (rc *ResponseCreator) BadRequest(w http.ResponseWriter, meta map[string]int
 		Meta:    meta,
 	})
 	if err != nil {
-		panic(err)
+		logrus.Error(err)
+		return
+	}
+	w.Write(b)
+}
+
+// Generic 500
+func (rc *ResponseCreator) InternalServerError(w http.ResponseWriter) {
+	rc.jsonResponse(w)
+	b, err := json.Marshal(dto.CenturionResponse{
+		Message: "Internal server error",
+		Code:    500,
+		Meta:    nil,
+	})
+	if err != nil {
+		logrus.Error(err)
+		return
 	}
 	w.Write(b)
 }
@@ -38,7 +55,8 @@ func (rc *ResponseCreator) Empty200(w http.ResponseWriter) {
 		Meta:    nil,
 	})
 	if err != nil {
-		panic(err)
+		logrus.Error(err)
+		return
 	}
 	w.Write(b)
 }
@@ -48,7 +66,8 @@ func (rc *ResponseCreator) OK(w http.ResponseWriter, body interface{}) {
 	rc.jsonResponse(w)
 	b, err := json.Marshal(body)
 	if err != nil {
-		panic(err)
+		logrus.Error(err)
+		return
 	}
 	w.Write(b)
 }

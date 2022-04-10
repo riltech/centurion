@@ -3,6 +3,7 @@ package bus
 import (
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
 )
 
@@ -52,6 +53,7 @@ func (b Bus) Listen(topic string) <-chan *BusEvent {
 }
 
 func (b Bus) Send(event *BusEvent) {
+	logrus.Infoln("New bus event: %s", spew.Sdump(event))
 	b.main <- event
 }
 

@@ -5,6 +5,7 @@ import "fmt"
 // Enums
 const EventTypeRegistration = "registration"
 const EventTypePlayerJoined = "player_joined"
+const EventTypePanic = "panic"
 
 // Describes a message sent to the bus
 type BusEvent struct {
@@ -13,7 +14,7 @@ type BusEvent struct {
 }
 
 // Decodes a registration event
-func (be BusEvent) DecodeRegistration() (*RegistrationEvent, error) {
+func (be BusEvent) DecodeRegistrationEvent() (*RegistrationEvent, error) {
 	if be.Type != EventTypeRegistration {
 		return nil, fmt.Errorf("Event is not registration")
 	}

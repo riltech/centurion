@@ -11,6 +11,7 @@ import (
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/engine/dto"
 	"github.com/riltech/centurion/core/player"
+	"github.com/sirupsen/logrus"
 )
 
 // Describes the interface of the engine controller
@@ -33,25 +34,37 @@ func NewController(bus bus.IBus, service IService) IConroller {
 	}
 }
 
+// Cleans up and logs any potential panic that occours
+// in the controller functions
+func (c Controller) cleanUp(w http.ResponseWriter) {
+	err := recover()
+	if err == nil {
+		return
+	}
+	logrus.Error(err)
+	(*ResponseCreator)(nil).InternalServerError(w)
+}
+
 // Handles /team/register request
 func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	var responseCreator *ResponseCreator
+	var response *ResponseCreator
+	defer c.cleanUp(w)
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		responseCreator.BadRequest(w, map[string]interface{}{
+		response.BadRequest(w, map[string]interface{}{
 			"reason": "Body is malformed",
 		})
 		return
 	}
 	var reqDTO dto.RegisterRequest
 	if err = json.Unmarshal(b, &reqDTO); err != nil {
-		responseCreator.BadRequest(w, map[string]interface{}{
+		response.BadRequest(w, map[string]interface{}{
 			"reason": "Body is malformed",
 		})
 		return
 	}
 	if reqDTO.Name == "" {
-		responseCreator.BadRequest(w, map[string]interface{}{
+		response.BadRequest(w, map[string]interface{}{
 			"reason": "Name is required",
 		})
 		return
@@ -60,7 +73,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 	case "defender":
 	case "attacker":
 	default:
-		responseCreator.BadRequest(w, map[string]interface{}{
+		response.BadRequest(w, map[string]interface{}{
 			"reason": "Team has to be either attacker or defender",
 		})
 		return
@@ -75,7 +88,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		Team: reqDTO.Team,
 		ID:   information.ID,
 	}); exists {
-		responseCreator.BadRequest(w, map[string]interface{}{
+		response.BadRequest(w, map[string]interface{}{
 			"reason": "Player already exists",
 		})
 		return
@@ -84,7 +97,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		Type:        bus.EventTypeRegistration,
 		Information: information,
 	})
-	responseCreator.OK(w, dto.RegisterResponse{
+	response.OK(w, dto.RegisterResponse{
 		CenturionResponse: dto.CenturionResponse{
 			Message: "Success",
 			Code:    200,

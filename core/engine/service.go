@@ -66,17 +66,17 @@ func (s Service) registration(e *bus.RegistrationEvent) error {
 func (s Service) routeEvent(e bus.BusEvent) {
 	switch e.Type {
 	case bus.EventTypeRegistration:
-		body, err := e.DecodeRegistration()
+		body, err := e.DecodeRegistrationEvent()
 		if err != nil {
 			logrus.Error(err)
 			return
 		}
 		if err := s.registration(body); err != nil {
-			panic(err)
+			logrus.Error(err)
 		}
 		return
 	default:
-		panic(fmt.Errorf("Unknown event %s", e.Type))
+		logrus.Error(fmt.Errorf("Unknown event %s", e.Type))
 	}
 }
 
