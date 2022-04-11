@@ -27,10 +27,10 @@ func (r *Repository) AddChallenge(challenge Model) error {
 	if r == nil {
 		return fmt.Errorf("Repository needs to be initialised before usage")
 	}
+	r.mux.Lock()
+	defer r.mux.Unlock()
 	if r.challenges == nil {
-		r.mux.Lock()
 		r.challenges = []Model{challenge}
-		r.mux.Unlock()
 		return nil
 	}
 	for _, c := range r.challenges {
@@ -38,9 +38,7 @@ func (r *Repository) AddChallenge(challenge Model) error {
 			return fmt.Errorf("Cannot use the same id (expected, got) (%s, %s) or challenge title (%s, %s)", challenge.ID, c.ID, challenge.Name, c.Name)
 		}
 	}
-	r.mux.Lock()
 	r.challenges = append(r.challenges, challenge)
-	r.mux.Unlock()
 	return nil
 }
 

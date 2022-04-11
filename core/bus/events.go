@@ -6,6 +6,7 @@ import "fmt"
 const EventTypeRegistration = "registration"
 const EventTypePlayerJoined = "player_joined"
 const EventTypePanic = "panic"
+const EventTypeAttackStateUpdate = "attack_state_update"
 
 // Describes a message sent to the bus
 type BusEvent struct {
@@ -35,6 +36,17 @@ func (be BusEvent) DecodePlayerJoinedEvent() (*PlayerJoinedEvent, error) {
 	return nil, fmt.Errorf("Event is not player joined")
 }
 
+// Decodes an attack status update event
+func (be BusEvent) DecodeAttackStateUpdateEvent() (*AttackStateUpdateEvent, error) {
+	if be.Type != EventTypeAttackStateUpdate {
+		return nil, fmt.Errorf("Event is not attack state update")
+	}
+	if conv, ok := be.Information.(AttackStateUpdateEvent); ok {
+		return &conv, nil
+	}
+	return nil, fmt.Errorf("Event is not attack state update")
+}
+
 // Describes a registration event
 type RegistrationEvent struct {
 	Name string
@@ -46,4 +58,11 @@ type RegistrationEvent struct {
 type PlayerJoinedEvent struct {
 	Name string
 	Team string
+}
+
+// Describes a success or a fail for an attack
+type AttackStateUpdateEvent struct {
+	AttackerName  string
+	ChallengeName string
+	Success       bool
 }

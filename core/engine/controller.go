@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/challenge"
@@ -24,16 +25,27 @@ type IConroller interface {
 // Controller implementation
 type Controller struct {
 	bus              bus.IBus
+	engineService    IService
 	playerService    player.IService
 	challengeService challenge.IService
+
+	// Websocket
+	upgrader websocket.Upgrader
 }
 
 // Constructor for the engine controller
-func NewController(bus bus.IBus, playerService player.IService, challengeService challenge.IService) IConroller {
+func NewController(
+	bus bus.IBus,
+	engineService IService,
+	playerService player.IService,
+	challengeService challenge.IService,
+) IConroller {
 	return &Controller{
 		bus,
+		engineService,
 		playerService,
 		challengeService,
+		websocket.Upgrader{},
 	}
 }
 
@@ -60,8 +72,8 @@ func (c Controller) FetchChallanges(w http.ResponseWriter, r *http.Request, _ ht
 			Name:        challenge.Name,
 			Description: challenge.Description,
 			Example: dto.ChallengeExampleDTO{
-				Hints:    challenge.Example.Hints,
-				Solution: challenge.Example.Solution,
+				Hints:     challenge.Example.Hints,
+				Solutions: challenge.Example.Solutions,
 			},
 		})
 	}
@@ -100,8 +112,8 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		return
 	}
 	switch strings.ToLower(reqDTO.Team) {
-	case "defender":
-	case "attacker":
+	case player.TeamTypeDefender:
+	case player.TeamTypeAttacker:
 	default:
 		response.BadRequest(w, map[string]interface{}{
 			"reason": "Team has to be either attacker or defender",
@@ -141,10 +153,33 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 	})
 }
 
+// Handles players who join the live game
+func (c Controller) PlayerJoin(w http.ResponseWriter, r *http.Request) {
+	logrus.Info("Got request")
+	connection, err := c.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		logrus.Error("upgrade:", err)
+		return
+	}
+	defer connection.Close()
+	_, message, err := connection.ReadMessage()
+	if err != nil {
+		logrus.Error("SERVER | read:", err)
+		return
+	}
+	var join dto.JoinEvent
+	if err = json.Unmarshal(message, &join); err != nil {
+		logrus.Error("SERVER | Invalid join request")
+		return
+	}
+	c.engineService.Join(join, connection)
+}
+
 // Creates a new router
 func (c Controller) GetRouter() *httprouter.Router {
 	router := httprouter.New()
 	router.POST("/team/register", c.Register)
 	router.GET("/challenges", c.FetchChallanges)
+	router.HandlerFunc("GET", "/team/join", c.PlayerJoin)
 	return router
 }

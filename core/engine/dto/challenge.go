@@ -16,6 +16,6 @@ type ChallengeResponseDTO struct {
 
 // Describes an example in a challenge DTO
 type ChallengeExampleDTO struct {
-	Hints    []interface{} `json:"hints"`
-	Solution interface{}   `json:"solution"`
+	Hints     []interface{} `json:"hints"`
+	Solutions []interface{} `json:"solutions"`
 }

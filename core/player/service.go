@@ -8,6 +8,10 @@ import (
 type IService interface {
 	// Adds a new player
 	AddPlayer(Model) error
+	// Sets a player's online status
+	SetPlayerOnlineStatus(ID string, online bool) (Model, error)
+	// Finds a player by ID
+	FindByID(ID string) (Model, error)
 	// Checks if a given player is already registered or not
 	IsPlayerExist(*Model) bool
 }
@@ -36,6 +40,19 @@ func (s Service) IsPlayerExist(p *Model) bool {
 		}
 	}
 	return false
+}
+
+func (s Service) SetPlayerOnlineStatus(ID string, online bool) (Model, error) {
+	user, err := s.repository.FindByID(ID)
+	if err != nil {
+		return Model{}, err
+	}
+	user.Online = online
+	return s.repository.UpdateByID(ID, user)
+}
+
+func (s Service) FindByID(ID string) (Model, error) {
+	return s.repository.FindByID(ID)
 }
 
 func NewService(repository IRepository) IService {

@@ -23,8 +23,9 @@ type Dashboard struct {
 	bus bus.IBus
 
 	// channels
-	playerRegisteredCh <-chan *bus.BusEvent
-	playerJoinedCh     <-chan *bus.BusEvent
+	playerRegisteredCh   <-chan *bus.BusEvent
+	playerJoinedCh       <-chan *bus.BusEvent
+	attackerStatusUpdate <-chan *bus.BusEvent
 }
 
 // Interface check
@@ -72,6 +73,28 @@ func (d Dashboard) Start() {
 			eventLog.Push(fmt.Sprintf("[Registration] %s registered to be a %s", event.Name, event.Team))
 			ui.Render(grid)
 			continue
+		case value := <-d.playerJoinedCh:
+			event, err := value.DecodePlayerJoinedEvent()
+			if err != nil {
+				logrus.Error(err)
+				continue
+			}
+			eventLog.Push(fmt.Sprintf("[Join] %s joined %s team", event.Name, event.Team))
+			ui.Render(grid)
+			continue
+		case value := <-d.attackerStatusUpdate:
+			event, err := value.DecodeAttackStateUpdateEvent()
+			if err != nil {
+				logrus.Error(err)
+				continue
+			}
+			result := "resolved"
+			if !event.Success {
+				result = "failed"
+			}
+			eventLog.Push(fmt.Sprintf("[Attacker] %s %s %s challenge", event.AttackerName, result, event.ChallengeName))
+			ui.Render(grid)
+			continue
 		case e := <-termUIEvents:
 			if e.Type == ui.KeyboardEvent {
 				logrus.Infoln("Dashboard quits")
@@ -86,5 +109,6 @@ func (d Dashboard) Start() {
 func NewDashboard(eventBus bus.IBus) IDashboard {
 	playerRegisteredCh := eventBus.Listen(bus.EventTypeRegistration)
 	playerJoinedCh := eventBus.Listen(bus.EventTypePlayerJoined)
-	return Dashboard{eventBus, playerRegisteredCh, playerJoinedCh}
+	attackerStatusUpdateCh := eventBus.Listen(bus.EventTypeAttackStateUpdate)
+	return Dashboard{eventBus, playerRegisteredCh, playerJoinedCh, attackerStatusUpdateCh}
 }

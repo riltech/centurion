@@ -12,6 +12,10 @@ type IRepository interface {
 	GetPlayers() []Model
 	// Adds a new player to the system
 	AddPlayer(Model) error
+	// Update by ID
+	UpdateByID(ID string, update Model) (Model, error)
+	// Finds a user by ID
+	FindByID(ID string) (Model, error)
 }
 
 // Engine repository implementation
@@ -33,11 +37,14 @@ func (r *Repository) AddPlayer(user Model) error {
 		r.mux.Unlock()
 		return nil
 	}
+	r.mux.RLock()
 	for _, p := range r.players {
 		if p.ID == user.ID || strings.ToLower(p.Name) == strings.ToLower(user.Name) {
+			r.mux.RUnlock()
 			return fmt.Errorf("Cannot use the same id (expected, got) (%s, %s) or username (%s, %s)", user.ID, p.ID, user.Name, p.Name)
 		}
 	}
+	r.mux.RUnlock()
 	r.mux.Lock()
 	r.players = append(r.players, user)
 	r.mux.Unlock()
@@ -45,9 +52,44 @@ func (r *Repository) AddPlayer(user Model) error {
 }
 
 func (r *Repository) GetPlayers() []Model {
+	if r == nil {
+		return []Model{}
+	}
 	defer r.mux.RUnlock()
 	r.mux.RLock()
 	return r.players
+}
+
+func (r *Repository) UpdateByID(ID string, update Model) (Model, error) {
+	if r == nil {
+		return Model{}, fmt.Errorf("Cannot update without the repository being initialised")
+	}
+	r.mux.RLock()
+	for i, user := range r.players {
+		if user.ID == ID {
+			r.mux.RUnlock()
+			r.mux.Lock()
+			r.players[i] = update
+			r.mux.Unlock()
+			return update, nil
+		}
+	}
+	r.mux.RUnlock()
+	return Model{}, fmt.Errorf("%s not found in players", ID)
+}
+
+func (r *Repository) FindByID(ID string) (Model, error) {
+	if r == nil {
+		return Model{}, fmt.Errorf("Repository is not initialised")
+	}
+	r.mux.RLock()
+	defer r.mux.RUnlock()
+	for _, p := range r.players {
+		if p.ID == ID {
+			return p, nil
+		}
+	}
+	return Model{}, fmt.Errorf("%s user not found", ID)
 }
 
 // Constructor to create a new engine repository

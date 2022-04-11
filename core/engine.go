@@ -64,6 +64,11 @@ func NewEngine(bus bus.IBus) IEngine {
 	playerService := player.NewService(playerRepo)
 	challengeRepo := challenge.NewRepository()
 	challengeService := challenge.NewService(challengeRepo)
+	err := challengeService.AddDefaultModules()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	engineService := engine.NewService(bus, playerService, challengeService)
 	return &Engine{
 		// Available after start is called
 		router: nil,
@@ -71,6 +76,6 @@ func NewEngine(bus bus.IBus) IEngine {
 
 		// Available as the instance is created
 		bus:  bus,
-		ctrl: engine.NewController(bus, playerService, challengeService),
+		ctrl: engine.NewController(bus, engineService, playerService, challengeService),
 	}
 }

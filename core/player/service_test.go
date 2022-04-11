@@ -19,7 +19,7 @@ func TestServiceIsPlayerExist(t *testing.T) {
 	playa := Model{
 		ID:    uuid.NewString(),
 		Name:  "John",
-		Team:  "attacker",
+		Team:  TeamTypeAttacker,
 		Score: 0,
 	}
 	if err := repo.AddPlayer(playa); err != nil {
@@ -28,19 +28,19 @@ func TestServiceIsPlayerExist(t *testing.T) {
 	assert.True(t, service.IsPlayerExist(&Model{
 		ID:    "xxxx",
 		Name:  "jOhn",
-		Team:  "defender",
+		Team:  TeamTypeDefender,
 		Score: 0,
 	}))
 	assert.True(t, service.IsPlayerExist(&Model{
 		ID:    "xxxx",
 		Name:  "JOHN",
-		Team:  "defender",
+		Team:  TeamTypeDefender,
 		Score: 0,
 	}))
 	assert.True(t, service.IsPlayerExist(&Model{
 		ID:    playa.ID,
 		Name:  "frankie",
-		Team:  "defender",
+		Team:  TeamTypeDefender,
 		Score: 0,
 	}))
 }
