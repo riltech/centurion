@@ -29,8 +29,7 @@ type Engine struct {
 	server *http.Server
 
 	// Internal dependencies
-	ctrl    engine.IConroller
-	service engine.IService
+	ctrl engine.IConroller
 }
 
 // Interface check
@@ -47,13 +46,11 @@ func (e *Engine) Start() {
 		WriteTimeout: 25 * time.Second,
 		ReadTimeout:  25 * time.Second,
 	}
-	go e.service.Start()
 	logrus.Infoln("Engine starts listening on 8080")
 	log.Fatal(e.server.ListenAndServe())
 }
 
 func (e Engine) Stop() {
-	e.service.Stop()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := e.server.Shutdown(ctx); err != nil {
@@ -65,7 +62,6 @@ func (e Engine) Stop() {
 func NewEngine(bus bus.IBus) IEngine {
 	playerRepo := player.NewRepository()
 	playerService := player.NewService(playerRepo)
-	engineService := engine.NewService(bus, playerRepo)
 	challengeRepo := challenge.NewRepository()
 	challengeService := challenge.NewService(challengeRepo)
 	return &Engine{
@@ -74,8 +70,7 @@ func NewEngine(bus bus.IBus) IEngine {
 		server: nil,
 
 		// Available as the instance is created
-		bus:     bus,
-		ctrl:    engine.NewController(bus, engineService, playerService, challengeService),
-		service: engineService,
+		bus:  bus,
+		ctrl: engine.NewController(bus, playerService, challengeService),
 	}
 }

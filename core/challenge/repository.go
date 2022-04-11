@@ -3,6 +3,7 @@ package challenge
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // Describes a repository for the engine
@@ -15,6 +16,7 @@ type IRepository interface {
 
 // Challenge repository implementation
 type Repository struct {
+	mux        sync.RWMutex
 	challenges []Model
 }
 
@@ -26,7 +28,9 @@ func (r *Repository) AddChallenge(challenge Model) error {
 		return fmt.Errorf("Repository needs to be initialised before usage")
 	}
 	if r.challenges == nil {
+		r.mux.Lock()
 		r.challenges = []Model{challenge}
+		r.mux.Unlock()
 		return nil
 	}
 	for _, c := range r.challenges {
@@ -34,11 +38,15 @@ func (r *Repository) AddChallenge(challenge Model) error {
 			return fmt.Errorf("Cannot use the same id (expected, got) (%s, %s) or challenge title (%s, %s)", challenge.ID, c.ID, challenge.Name, c.Name)
 		}
 	}
+	r.mux.Lock()
 	r.challenges = append(r.challenges, challenge)
+	r.mux.Unlock()
 	return nil
 }
 
-func (r Repository) GetChallenges() []Model {
+func (r *Repository) GetChallenges() []Model {
+	defer r.mux.RUnlock()
+	r.mux.RLock()
 	return r.challenges
 }
 

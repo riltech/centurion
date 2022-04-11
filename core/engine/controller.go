@@ -24,16 +24,14 @@ type IConroller interface {
 // Controller implementation
 type Controller struct {
 	bus              bus.IBus
-	engineService    IService
 	playerService    player.IService
 	challengeService challenge.IService
 }
 
 // Constructor for the engine controller
-func NewController(bus bus.IBus, engineService IService, playerService player.IService, challengeService challenge.IService) IConroller {
+func NewController(bus bus.IBus, playerService player.IService, challengeService challenge.IService) IConroller {
 	return &Controller{
 		bus,
-		engineService,
 		playerService,
 		challengeService,
 	}
@@ -115,15 +113,19 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 		Team: reqDTO.Team,
 		ID:   string(uuid.NewString()),
 	}
-	if exists := c.playerService.IsPlayerExist(&player.Model{
+	newPlayer := player.Model{
 		Name: reqDTO.Name,
 		Team: reqDTO.Team,
 		ID:   information.ID,
-	}); exists {
+	}
+	if exists := c.playerService.IsPlayerExist(&newPlayer); exists {
 		response.BadRequest(w, map[string]interface{}{
 			"reason": "Player already exists",
 		})
 		return
+	}
+	if err = c.playerService.AddPlayer(newPlayer); err != nil {
+		panic(err)
 	}
 	c.bus.Send(&bus.BusEvent{
 		Type:        bus.EventTypeRegistration,

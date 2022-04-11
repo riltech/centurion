@@ -3,6 +3,7 @@ package player
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // Describes a repository for the engine
@@ -15,6 +16,7 @@ type IRepository interface {
 
 // Engine repository implementation
 type Repository struct {
+	mux     sync.RWMutex
 	players []Model
 }
 
@@ -26,7 +28,9 @@ func (r *Repository) AddPlayer(user Model) error {
 		return fmt.Errorf("Repository needs to be initialised before usage")
 	}
 	if r.players == nil {
+		r.mux.Lock()
 		r.players = []Model{user}
+		r.mux.Unlock()
 		return nil
 	}
 	for _, p := range r.players {
@@ -34,11 +38,15 @@ func (r *Repository) AddPlayer(user Model) error {
 			return fmt.Errorf("Cannot use the same id (expected, got) (%s, %s) or username (%s, %s)", user.ID, p.ID, user.Name, p.Name)
 		}
 	}
+	r.mux.Lock()
 	r.players = append(r.players, user)
+	r.mux.Unlock()
 	return nil
 }
 
-func (r Repository) GetPlayers() []Model {
+func (r *Repository) GetPlayers() []Model {
+	defer r.mux.RUnlock()
+	r.mux.RLock()
 	return r.players
 }
 
