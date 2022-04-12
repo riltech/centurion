@@ -16,7 +16,7 @@ NOTE: Your name has to be unique
 POST /team/register
 ```
 
-Request body:
+[Request body](../core/engine/dto/register.go):
 ```js
 {
   name: "Unique name",
@@ -24,7 +24,7 @@ Request body:
 }
 ```
 
-Response body:
+[Response body](../core/engine/dto/register.go):
 ```js
 {
   message: "Success",
@@ -40,12 +40,8 @@ You can use the REST API to list all available challenges
 ```
 GET /challenges
 ```
-	ID          string              `json:"id"`
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
-	Example     ChallengeExampleDTO `json:"example"`
 
-Response body:
+[Response body](../core/engine/dto/challenge.go):
 ```js
 {
   message: "Success",
