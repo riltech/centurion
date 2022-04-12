@@ -1,5 +1,7 @@
 package challenge
 
+import "time"
+
 // Describes a default module challenge which is part of the starting
 // collection when the game launches
 const ChallengeTypeDefault = "default"
@@ -9,16 +11,26 @@ const ChallengeTypePlayerCreated = "player_created"
 
 // Describes a challenge
 type Model struct {
-	ID          string
-	CreatorID   string
-	Name        string
+	// ID of the challenge
+	ID string
+	// ID of the creator
+	CreatorID string
+	// Name of the challenge
+	Name string
+	// Description of the challenge
 	Description string
-	Type        string
-	Example     Example
+	// Internal type (see consts for types)
+	Type string
+	// Creation time
+	CreatedAt time.Time
+	// Example resolution
+	Example Example
 }
 
 // Example of a challenge
 type Example struct {
-	Hints     []interface{}
+	// Hints array
+	Hints []interface{}
+	// Solutions array
 	Solutions []interface{}
 }

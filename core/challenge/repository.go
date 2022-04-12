@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 )
 
-// Describes a repository for the engine
+// Describes a repository for challenges
 type IRepository interface {
 	// Fetches the available challenges in the system
 	GetChallenges() []Model
@@ -29,6 +30,7 @@ func (r *Repository) AddChallenge(challenge Model) error {
 	}
 	r.mux.Lock()
 	defer r.mux.Unlock()
+	challenge.CreatedAt = time.Now()
 	if r.challenges == nil {
 		r.challenges = []Model{challenge}
 		return nil
@@ -50,5 +52,7 @@ func (r *Repository) GetChallenges() []Model {
 
 // Constructor to create a new engine repository
 func NewRepository() *Repository {
-	return &Repository{}
+	return &Repository{
+		mux: sync.RWMutex{},
+	}
 }

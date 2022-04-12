@@ -94,5 +94,7 @@ func (r *Repository) FindByID(ID string) (Model, error) {
 
 // Constructor to create a new engine repository
 func NewRepository() *Repository {
-	return &Repository{}
+	return &Repository{
+		mux: sync.RWMutex{},
+	}
 }

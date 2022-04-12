@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/challenge"
+	"github.com/riltech/centurion/core/combat"
 	"github.com/riltech/centurion/core/engine/dto"
 	"github.com/riltech/centurion/core/player"
 	"github.com/sirupsen/logrus"
@@ -24,6 +26,7 @@ type Service struct {
 	bus              bus.IBus
 	playerService    player.IService
 	challengeService challenge.IService
+	combatService    combat.IService
 
 	activeConnections map[string]*websocket.Conn
 	mux               sync.RWMutex
@@ -136,6 +139,7 @@ func (s *Service) attacker(ID string) error {
 			var detailedEvent dto.AttackEvent
 			err = json.Unmarshal(b, &detailedEvent)
 			if err != nil {
+				logrus.Error(err)
 				if stillActive := s.sendError(ID, "Could not parse Attack Event"); !stillActive {
 					break
 				}
@@ -143,6 +147,7 @@ func (s *Service) attacker(ID string) error {
 			}
 			target, err := s.challengeService.FindByID(detailedEvent.TargetID)
 			if err != nil {
+				logrus.Error(err)
 				if stillActive := s.sendError(ID, "Invalid challenge ID"); !stillActive {
 					break
 				}
@@ -151,6 +156,7 @@ func (s *Service) attacker(ID string) error {
 			if target.Type == challenge.ChallengeTypeDefault {
 				hints, err := s.challengeService.GenerateHintForDefault(target)
 				if err != nil {
+					logrus.Error(err)
 					if stillActive := s.sendError(ID, err.Error()); !stillActive {
 						break
 					}
@@ -165,14 +171,56 @@ func (s *Service) attacker(ID string) error {
 				}
 				continue
 			}
-			// TODO: This should emit an event at the defender
-			_, err = s.playerService.FindByID(target.CreatorID)
+			creator, err := s.playerService.FindByID(target.CreatorID)
 			if err != nil {
+				logrus.Error(err)
 				if stillActive := s.sendError(ID, "Challenge owner could not be retrieved"); !stillActive {
 					break
 				}
 				continue
 			}
+			newCombat := combat.Model{
+				ID:          uuid.NewString(),
+				ChallengeID: target.ID,
+				AttackerID:  ID,
+				DefenderID:  creator.ID,
+				CombatState: combat.CombatStateAttackInitiated,
+			}
+			err = s.combatService.AddCombat(newCombat)
+			if err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Combat could not be created, please try again"); !stillActive {
+					break
+				}
+				continue
+			}
+			if !creator.Online {
+				if _, err = s.combatService.UpdateCombatState(newCombat.ID, combat.CombatStateDefenseFailed); err != nil {
+					logrus.Error(err)
+				}
+				// TODO: There should be a point reduction or increase
+				if isConnectionStillAlive := s.sendResponseOrBreakConnection(ID, dto.DefenderFailedToDefendEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeDefenderFailedToDefend,
+					},
+					TargetID: target.ID,
+				}); !isConnectionStillAlive {
+					break
+				}
+			} else {
+				if _, err = s.combatService.UpdateCombatState(newCombat.ID, combat.CombatStateDefenseRequested); err != nil {
+					logrus.Error(err)
+				}
+				// if the connection is not alive here that's the problem of the potential
+				// go routine handling the given defender
+				s.sendResponseOrBreakConnection(creator.ID, dto.DefendActionRequestEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeDefenderFailedToDefend,
+					},
+					TargetID: target.ID,
+				})
+			}
+			continue
 		}
 		if event.Type == dto.SocketEventTypeAttackSolution {
 			var detailedEvent dto.AttackSolutionEvent
@@ -223,6 +271,49 @@ func (s *Service) attacker(ID string) error {
 				}
 				continue
 			}
+			creator, err := s.playerService.FindByID(target.CreatorID)
+			if err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Challenge owner could not be retrieved"); !stillActive {
+					break
+				}
+				continue
+			}
+			ongoingCombat, err := s.combatService.FindByAttackerAndChallenge(ID, target.ID)
+			if err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "No combat found, first initiate an attack"); !stillActive {
+					break
+				}
+				continue
+			}
+			if !creator.Online {
+				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateDefenseFailed); err != nil {
+					logrus.Error(err)
+				}
+				if isConnectionStillAlive := s.sendResponseOrBreakConnection(ID, dto.DefenderFailedToDefendEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeDefenderFailedToDefend,
+					},
+					TargetID: target.ID,
+				}); !isConnectionStillAlive {
+					break
+				}
+			} else {
+				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateSolutionEvaluationRequested); err != nil {
+					logrus.Error(err)
+				}
+				// if the connection is not alive here that's the problem of the potential
+				// go routine handling the given defender
+				s.sendResponseOrBreakConnection(creator.ID, dto.SolutionEvaluationRequestEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluationRequest,
+					},
+					TargetID:  target.ID,
+					Solutions: detailedEvent.Solutions,
+				})
+			}
+			continue
 		}
 	}
 	return nil
@@ -258,11 +349,13 @@ func NewService(
 	bus bus.IBus,
 	playerService player.IService,
 	challengeService challenge.IService,
+	combatService combat.IService,
 ) IService {
 	return &Service{
 		bus,
 		playerService,
 		challengeService,
+		combatService,
 		make(map[string]*websocket.Conn),
 		sync.RWMutex{},
 	}

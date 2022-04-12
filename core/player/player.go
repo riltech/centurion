@@ -10,9 +10,14 @@ const TeamTypeDefender = "defender"
 // who is a user already registered to a given team
 // and (possibly) actively participating in the game
 type Model struct {
-	ID     string
-	Name   string
-	Team   string
-	Score  int
+	// ID of the player
+	ID string
+	// Name of the player
+	Name string
+	// Team of the player. Either "attacker" or "defender"
+	Team string
+	// Current score of the individual player
+	Score int
+	// Online indicator
 	Online bool
 }

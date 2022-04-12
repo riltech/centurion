@@ -2,13 +2,13 @@ package core
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/challenge"
+	"github.com/riltech/centurion/core/combat"
 	"github.com/riltech/centurion/core/engine"
 	"github.com/riltech/centurion/core/player"
 	"github.com/sirupsen/logrus"
@@ -47,7 +47,9 @@ func (e *Engine) Start() {
 		ReadTimeout:  25 * time.Second,
 	}
 	logrus.Infoln("Engine starts listening on 8080")
-	log.Fatal(e.server.ListenAndServe())
+	if err := e.server.ListenAndServe(); err != nil {
+		logrus.Error(err)
+	}
 }
 
 func (e Engine) Stop() {
@@ -64,11 +66,13 @@ func NewEngine(bus bus.IBus) IEngine {
 	playerService := player.NewService(playerRepo)
 	challengeRepo := challenge.NewRepository()
 	challengeService := challenge.NewService(challengeRepo)
+	combatRepo := combat.NewRepository()
+	combatService := combat.NewService(combatRepo)
 	err := challengeService.AddDefaultModules()
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	engineService := engine.NewService(bus, playerService, challengeService)
+	engineService := engine.NewService(bus, playerService, challengeService, combatService)
 	return &Engine{
 		// Available after start is called
 		router: nil,
