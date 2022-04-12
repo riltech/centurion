@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"log"
+	"time"
 
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
@@ -19,10 +20,11 @@ type IDashboard interface {
 
 // Dashboard implementation
 type Dashboard struct {
-	// dependencies
-	bus bus.IBus
+	createdAt time.Time
+	bus       bus.IBus
 
 	// channels
+
 	playerRegisteredCh   <-chan *bus.BusEvent
 	playerJoinedCh       <-chan *bus.BusEvent
 	attackerStatusUpdate <-chan *bus.BusEvent
@@ -45,10 +47,13 @@ func (d Dashboard) Start() {
 	welcome.Text = "Placeholder"
 	base := 1.0 / 10
 
-	eventLog := dashboard.GetEventLog()
+	clockModule := dashboard.ClockWindow{
+		CreatedAt: d.createdAt,
+	}
+	eventLog := dashboard.GetEventLog(d.createdAt)
 	grid.Set(
 		ui.NewRow(base,
-			dashboard.GetHeader()...,
+			dashboard.GetHeader(clockModule.GetWidget())...,
 		),
 		ui.NewRow(base*5.0,
 			welcome,
@@ -62,8 +67,14 @@ func (d Dashboard) Start() {
 	ui.Render(grid)
 
 	termUIEvents := ui.PollEvents()
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
 	for {
 		select {
+		case <-ticker.C:
+			clockModule.Refresh()
+			ui.Render(grid)
+			continue
 		case value := <-d.playerRegisteredCh:
 			event, err := value.DecodeRegistrationEvent()
 			if err != nil {
@@ -110,5 +121,5 @@ func NewDashboard(eventBus bus.IBus) IDashboard {
 	playerRegisteredCh := eventBus.Listen(bus.EventTypeRegistration)
 	playerJoinedCh := eventBus.Listen(bus.EventTypePlayerJoined)
 	attackerStatusUpdateCh := eventBus.Listen(bus.EventTypeAttackStateUpdate)
-	return Dashboard{eventBus, playerRegisteredCh, playerJoinedCh, attackerStatusUpdateCh}
+	return Dashboard{time.Now(), eventBus, playerRegisteredCh, playerJoinedCh, attackerStatusUpdateCh}
 }

@@ -1,12 +1,15 @@
 package dashboard
 
 import (
+	"fmt"
+	"time"
+
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
 
 // Header component for the dashboard
-func GetHeader() []interface{} {
+func GetHeader(clock *widgets.Paragraph) []interface{} {
 	welcome := widgets.NewParagraph()
 	welcome.Text = "Welcome to Riltech's Centurion!"
 	welcome.BorderStyle.Fg = ui.ColorYellow
@@ -16,9 +19,11 @@ func GetHeader() []interface{} {
 	info.Text = "https://github.com/riltech/centurion"
 	info.Title = "More information"
 	info.BorderStyle.Fg = ui.ColorYellow
+	base := 1.0 / 10
 	return []interface{}{
-		ui.NewCol(0.5, welcome),
-		ui.NewCol(0.5, info),
+		ui.NewCol(base*4, welcome),
+		ui.NewCol(base*4, info),
+		ui.NewCol(base*2, clock),
 	}
 }
 
@@ -26,7 +31,8 @@ func GetHeader() []interface{} {
 // to provide handy high level functionality
 // for rendering logs
 type LogWindow struct {
-	List *widgets.List
+	CreatedAt time.Time
+	List      *widgets.List
 }
 
 // Pushes a given number of item into the stack
@@ -34,17 +40,44 @@ func (lw *LogWindow) Push(item string) *LogWindow {
 	if lw == nil || lw.List == nil {
 		panic("LogWindow or underlying list is nil")
 	}
-	lw.List.Rows = append([]string{item}, lw.List.Rows...)
+	toAdd := fmt.Sprintf("%s %s", GetTimePassedSince(lw.CreatedAt, true), item)
+	lw.List.Rows = append([]string{toAdd}, lw.List.Rows...)
 	return lw
 }
 
 // Returns a new list for event logs
-func GetEventLog() *LogWindow {
+func GetEventLog(createdAt time.Time) *LogWindow {
 	l := widgets.NewList()
 	l.Title = "Event logs"
 	l.Rows = []string{}
 	l.TextStyle = ui.NewStyle(ui.ColorYellow)
 	l.WrapText = false
 	l.SetRect(0, 0, 25, 8)
-	return &LogWindow{l}
+	return &LogWindow{createdAt, l}
+}
+
+// Describes a clock window widget
+type ClockWindow struct {
+	CreatedAt time.Time
+	widget    *widgets.Paragraph
+}
+
+// returns the widget
+func (cw *ClockWindow) GetWidget() *widgets.Paragraph {
+	if cw == nil {
+		return nil
+	}
+	if cw.widget == nil {
+		clock := widgets.NewParagraph()
+		clock.Text = GetTimePassedSince(cw.CreatedAt, false)
+		clock.BorderStyle.Fg = ui.ColorYellow
+		clock.TextStyle.Modifier = ui.ModifierBold
+		cw.widget = clock
+	}
+	return cw.widget
+}
+
+// Refreshes the time on the clock
+func (cw *ClockWindow) Refresh() {
+	cw.widget.Text = GetTimePassedSince(cw.CreatedAt, false)
 }
