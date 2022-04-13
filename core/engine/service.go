@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/riltech/centurion/core/bus"
@@ -141,6 +142,7 @@ func (s *Service) attacker(ID string) error {
 	for {
 		// Acquire message
 		t, b, err := conn.ReadMessage()
+		logrus.Infof("Read message from attacker (%s) %s", ID, string(b))
 		if t == websocket.CloseMessage {
 			s.closeConnection(ID)
 			break
@@ -184,6 +186,15 @@ func (s *Service) attacker(ID string) error {
 						break
 					}
 				}
+				if attacker, err := s.playerService.FindByID(ID); err == nil {
+					s.bus.Send(&bus.BusEvent{
+						Type: bus.EventTypeAttackInitiated,
+						Information: bus.AttackInitiatedEvent{
+							AttackerName:  attacker.Name,
+							ChallengeName: target.Name,
+						},
+					})
+				}
 				if isConnectionStillAlive := s.sendResponseOrBreakConnection(ID, dto.AttackChallengeEvent{
 					SocketEvent: dto.SocketEvent{
 						Type: dto.SocketEventTypeAttackChallenge,
@@ -219,6 +230,7 @@ func (s *Service) attacker(ID string) error {
 				continue
 			}
 			if !creator.Online {
+				logrus.Infof("Creator is not online to defend %s", spew.Sdump(creator))
 				if _, err = s.combatService.UpdateCombatState(newCombat.ID, combat.CombatStateDefenseFailed); err != nil {
 					logrus.Error(err)
 				}
@@ -235,11 +247,19 @@ func (s *Service) attacker(ID string) error {
 				if _, err = s.combatService.UpdateCombatState(newCombat.ID, combat.CombatStateDefenseRequested); err != nil {
 					logrus.Error(err)
 				}
+				attacker, _ := s.playerService.FindByID(ID)
+				s.bus.Send(&bus.BusEvent{
+					Type: bus.EventTypeAttackInitiated,
+					Information: bus.AttackInitiatedEvent{
+						AttackerName:  attacker.Name,
+						ChallengeName: target.Name,
+					},
+				})
 				// if the connection is not alive here that's the problem of the potential
 				// go routine handling the given defender
 				s.sendResponseOrBreakConnection(creator.ID, dto.DefendActionRequestEvent{
 					SocketEvent: dto.SocketEvent{
-						Type: dto.SocketEventTypeDefenderFailedToDefend,
+						Type: dto.SocketEventTypeDefendActionRequest,
 					},
 					TargetID: target.ID,
 					CombatID: newCombat.ID,
@@ -286,8 +306,8 @@ func (s *Service) attacker(ID string) error {
 				if isValid {
 					attacker, _ := s.playerService.FindByID(ID)
 					s.bus.Send(&bus.BusEvent{
-						Type: bus.EventTypeAttackStateUpdate,
-						Information: bus.AttackStateUpdateEvent{
+						Type: bus.EventTypeAttackFinished,
+						Information: bus.AttackFinishedEvent{
 							AttackerName:  attacker.Name,
 							ChallengeName: target.Name,
 							Success:       isValid,
@@ -370,6 +390,7 @@ func (s *Service) defender(ID string) error {
 	for {
 		// Acquire message
 		t, b, err := conn.ReadMessage()
+		logrus.Infof("Read message from defender (%s) %s", ID, string(b))
 		if t == websocket.CloseMessage {
 			s.closeConnection(ID)
 			break
@@ -406,6 +427,7 @@ func (s *Service) defender(ID string) error {
 				continue
 			}
 			if ongoingCombat.IsInFinalState() {
+				logrus.Error(fmt.Errorf("%s combat is already over", ongoingCombat.ID))
 				if stillActive := s.sendError(ID, "Combat is already over, state is: "+ongoingCombat.CombatState); !stillActive {
 					break
 				}
@@ -420,6 +442,7 @@ func (s *Service) defender(ID string) error {
 				continue
 			}
 			if !attacker.Online {
+				logrus.Infof("Attacker is offline %s", spew.Sdump(attacker))
 				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateAttackFailed); err != nil {
 					logrus.Error(err)
 				}
@@ -440,7 +463,7 @@ func (s *Service) defender(ID string) error {
 				// go routine handling the given defender
 				s.sendResponseOrBreakConnection(attacker.ID, dto.AttackChallengeEvent{
 					SocketEvent: dto.SocketEvent{
-						Type: dto.SocketEventTypeSolutionEvaluationRequest,
+						Type: dto.SocketEventTypeAttackChallenge,
 					},
 					TargetID: ongoingCombat.ChallengeID,
 					Hints:    detailedEvent.Hints,
@@ -489,13 +512,23 @@ func (s *Service) defender(ID string) error {
 			if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, stateToUpdate); err != nil {
 				logrus.Error(err)
 			}
+			target, _ := s.challengeService.FindByID(ongoingCombat.ChallengeID)
+			s.bus.Send(&bus.BusEvent{
+				Type: bus.EventTypeAttackFinished,
+				Information: bus.AttackFinishedEvent{
+					AttackerName:  attacker.Name,
+					ChallengeName: target.Name,
+					Success:       detailedEvent.Success,
+				},
+			})
 			if attacker.Online {
 				s.sendResponseOrBreakConnection(attacker.ID, dto.AttackResultEvent{
 					SocketEvent: dto.SocketEvent{
-						Type: dto.SocketEventTypeSolutionEvaluationRequest,
+						Type: dto.SocketEventTypeAttackResult,
 					},
 					TargetID: ongoingCombat.ChallengeID,
 					Success:  detailedEvent.Success,
+					Message:  detailedEvent.Message,
 				})
 			}
 			continue

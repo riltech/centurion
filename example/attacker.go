@@ -13,19 +13,20 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/websocket"
 	"github.com/riltech/centurion/core/engine/dto"
+	"github.com/riltech/centurion/core/logger"
 	"github.com/sirupsen/logrus"
 )
 
 // Describes the interface of an example client
-type IClient interface {
+type IAttacker interface {
 	// Starts the client
 	Start()
 	// Stops the client
 	Stop()
 }
 
-// Describes an example client
-type Client struct {
+// Describes an example client implementation
+type Attacker struct {
 	// Address of the server
 	address url.URL
 	// Stops the client
@@ -33,21 +34,62 @@ type Client struct {
 }
 
 // Interface check
-var _ IClient = (*Client)(nil)
+var _ IAttacker = (*Attacker)(nil)
 
 // Constructor for the client
-func NewClient() IClient {
-	return &Client{
+func NewAttacker() IAttacker {
+	return &Attacker{
 		address: url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/team/join"},
 		stop:    make(chan uint8, 1),
 	}
 }
 
-func (c Client) Stop() {
-	c.stop <- 1
+func (a Attacker) Stop() {
+	a.stop <- 1
 }
 
-func (c Client) Start() {
+// Called when the default module is solved
+func (a Attacker) attackDefendBotChallenge(ID string, conn *websocket.Conn) {
+	logrus.Info("Attacker bot is waiting 15 seconds to solve defender bot challenge")
+	<-time.After(15 * time.Second)
+	logrus.Info("Attacker bot starts defender bot challenge")
+	client := http.Client{}
+	resp, err := client.Get("http://localhost:8080/challenges")
+	if err != nil {
+		logger.LogError(err)
+		return
+	}
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logger.LogError(err)
+		return
+	}
+	var challenges dto.FetchChallengesResponse
+	if err = json.Unmarshal(b, &challenges); err != nil {
+		logger.LogError(err)
+		return
+	}
+	for _, c := range challenges.Challenges {
+		logrus.Info(c.Name)
+		if c.Name == "Reverse sorter - 2" {
+			logrus.Info("Attacker bot write")
+			err = conn.WriteJSON(dto.AttackEvent{
+				SocketEvent: dto.SocketEvent{
+					Type: dto.SocketEventTypeAttack,
+				},
+				TargetID: c.ID,
+			})
+			logrus.Info("Attacker bot written")
+			if err != nil {
+				logger.LogError(err)
+			}
+			return
+		}
+	}
+	logger.LogError(fmt.Errorf("Attacker did not find defender bot challenge"))
+}
+
+func (a Attacker) Start() {
 	client := http.Client{}
 	registerDTO := dto.RegisterRequest{
 		Name: gofakeit.Name(),
@@ -55,7 +97,7 @@ func (c Client) Start() {
 	}
 	b, err := json.Marshal(registerDTO)
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	resp, err := client.Post(
@@ -63,42 +105,42 @@ func (c Client) Start() {
 		"application/json",
 		bytes.NewBuffer(b))
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	b, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	var regResponseDTO dto.RegisterResponse
 	if err = json.Unmarshal(b, &regResponseDTO); err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	if regResponseDTO.Code != 200 {
-		logrus.Errorf("Client response was not 200 %s", spew.Sdump(regResponseDTO))
+		logger.LogError(fmt.Errorf("Client response was not 200 %s", spew.Sdump(regResponseDTO)))
 		return
 	}
-	conn, _, err := websocket.DefaultDialer.Dial(c.address.String(), nil)
+	conn, _, err := websocket.DefaultDialer.Dial(a.address.String(), nil)
 	if err != nil {
-		logrus.Error("dial:", err)
+		logger.LogError(err)
 		return
 	}
 	defer conn.Close()
 	resp, err = client.Get("http://localhost:8080/challenges")
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	b, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	var challenges dto.FetchChallengesResponse
 	if err = json.Unmarshal(b, &challenges); err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	var selected *dto.ChallengeResponseDTO
@@ -108,7 +150,7 @@ func (c Client) Start() {
 		}
 	}
 	if selected == nil {
-		logrus.Error(fmt.Errorf("Could not find default module"))
+		logger.LogError(fmt.Errorf("Could not find default module"))
 		return
 	}
 	join := dto.JoinEvent{
@@ -118,7 +160,7 @@ func (c Client) Start() {
 		ID: regResponseDTO.ID,
 	}
 	if err = conn.WriteJSON(join); err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	<-time.After(time.Second * 5)
@@ -129,29 +171,30 @@ func (c Client) Start() {
 		TargetID: selected.ID,
 	}
 	if err = conn.WriteJSON(attack); err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
+	firstStagePassed := false
 	for {
 		var event dto.SocketEvent
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 			return
 		}
 		if err = json.Unmarshal(message, &event); err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 			return
 		}
 		if event.Type == dto.SocketEventTypeAttackChallenge {
 			var detailedEvent dto.AttackChallengeEvent
 			err = json.Unmarshal(message, &detailedEvent)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				return
 			}
 			if len(detailedEvent.Hints) == 0 {
-				logrus.Error("Did not get hints in example client")
+				logger.LogError(fmt.Errorf("Did not get hints in example client"))
 				return
 			}
 			switch detailedEvent.Hints[0].(type) {
@@ -171,7 +214,7 @@ func (c Client) Start() {
 				})
 				continue
 			default:
-				logrus.Error("Hint was not a string in example client")
+				logger.LogError(fmt.Errorf("Hint was not a string in example client"))
 				return
 			}
 		}
@@ -179,15 +222,21 @@ func (c Client) Start() {
 			var detailedEvent dto.AttackResultEvent
 			err = json.Unmarshal(message, &detailedEvent)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				return
 			}
 			if detailedEvent.Success == false {
 				logrus.Infof("Challenge (%s) failed by bot", selected.ID)
 			} else {
-				logrus.Infof("Challenge (%s) resolved by bot\n", selected.ID)
+				logrus.Infof("Challenge (%s) resolved by bot", selected.ID)
+				if !firstStagePassed {
+					firstStagePassed = true
+					go a.attackDefendBotChallenge(regResponseDTO.ID, conn)
+				} else {
+					return
+				}
 			}
-			return
+			continue
 		}
 	}
 }

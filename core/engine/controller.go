@@ -198,7 +198,8 @@ func (c Controller) InstallChallenge(w http.ResponseWriter, r *http.Request, _ h
 		})
 		return
 	}
-	if defender, err := c.playerService.FindByID(reqDTO.DefenderID); err != nil || defender.Team != player.TeamTypeDefender {
+	defender, err := c.playerService.FindByID(reqDTO.DefenderID)
+	if err != nil || defender.Team != player.TeamTypeDefender {
 		response.BadRequest(w, map[string]interface{}{
 			"reason": "Defender ID is invalid or not found",
 		})
@@ -222,6 +223,13 @@ func (c Controller) InstallChallenge(w http.ResponseWriter, r *http.Request, _ h
 		})
 		return
 	}
+	c.bus.Send(&bus.BusEvent{
+		Type: bus.EventTypeDefenseModuleInstalled,
+		Information: bus.DefenseModuleInstalledEvent{
+			Name:        reqDTO.Name,
+			CreatorName: defender.Name,
+		},
+	})
 	response.OK(w, dto.InstallChallengeResponse{
 		CenturionResponse: dto.CenturionResponse{
 			Message: "Success",

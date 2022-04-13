@@ -25,9 +25,11 @@ type Dashboard struct {
 
 	// channels
 
-	playerRegisteredCh   <-chan *bus.BusEvent
-	playerJoinedCh       <-chan *bus.BusEvent
-	attackerStatusUpdate <-chan *bus.BusEvent
+	playerRegisteredCh       <-chan *bus.BusEvent
+	playerJoinedCh           <-chan *bus.BusEvent
+	attackInitiatedCh        <-chan *bus.BusEvent
+	attackFinishedCh         <-chan *bus.BusEvent
+	defenseModuleInstalledCh <-chan *bus.BusEvent
 }
 
 // Interface check
@@ -93,8 +95,8 @@ func (d Dashboard) Start() {
 			eventLog.Push(fmt.Sprintf("[Join] %s joined %s team", event.Name, event.Team))
 			ui.Render(grid)
 			continue
-		case value := <-d.attackerStatusUpdate:
-			event, err := value.DecodeAttackStateUpdateEvent()
+		case value := <-d.attackFinishedCh:
+			event, err := value.DecodeAttackFinishedEvent()
 			if err != nil {
 				logrus.Error(err)
 				continue
@@ -103,7 +105,25 @@ func (d Dashboard) Start() {
 			if !event.Success {
 				result = "failed"
 			}
-			eventLog.Push(fmt.Sprintf("[Attacker] %s %s %s challenge", event.AttackerName, result, event.ChallengeName))
+			eventLog.Push(fmt.Sprintf("[Combat] %s %s %s challenge", event.AttackerName, result, event.ChallengeName))
+			ui.Render(grid)
+			continue
+		case value := <-d.attackInitiatedCh:
+			event, err := value.DecodeAttackInitiatedEvent()
+			if err != nil {
+				logrus.Error(err)
+				continue
+			}
+			eventLog.Push(fmt.Sprintf("[Combat] %s initiated attack on %s challenge", event.AttackerName, event.ChallengeName))
+			ui.Render(grid)
+			continue
+		case value := <-d.defenseModuleInstalledCh:
+			event, err := value.DecodeDefenseModuleInstalledEvent()
+			if err != nil {
+				logrus.Error(err)
+				continue
+			}
+			eventLog.Push(fmt.Sprintf("[Defense] %s installed new module '%s'", event.CreatorName, event.Name))
 			ui.Render(grid)
 			continue
 		case e := <-termUIEvents:
@@ -120,6 +140,16 @@ func (d Dashboard) Start() {
 func NewDashboard(eventBus bus.IBus) IDashboard {
 	playerRegisteredCh := eventBus.Listen(bus.EventTypeRegistration)
 	playerJoinedCh := eventBus.Listen(bus.EventTypePlayerJoined)
-	attackerStatusUpdateCh := eventBus.Listen(bus.EventTypeAttackStateUpdate)
-	return Dashboard{time.Now(), eventBus, playerRegisteredCh, playerJoinedCh, attackerStatusUpdateCh}
+	attackFinishedCh := eventBus.Listen(bus.EventTypeAttackFinished)
+	attackInitiatedCh := eventBus.Listen(bus.EventTypeAttackInitiated)
+	defenseModuleInstalledCh := eventBus.Listen(bus.EventTypeDefenseModuleInstalled)
+	return Dashboard{
+		createdAt:                time.Now(),
+		bus:                      eventBus,
+		playerRegisteredCh:       playerRegisteredCh,
+		playerJoinedCh:           playerJoinedCh,
+		attackInitiatedCh:        attackInitiatedCh,
+		attackFinishedCh:         attackFinishedCh,
+		defenseModuleInstalledCh: defenseModuleInstalledCh,
+	}
 }

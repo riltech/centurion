@@ -62,6 +62,8 @@ type AttackResultEvent struct {
 	TargetID string `json:"targetId"`
 	// Result of the attack
 	Success bool `json:"success"`
+	// Optional message to pass on from the defender
+	Message string `json:"message"`
 }
 
 // Sent when an error happens during an action

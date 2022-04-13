@@ -6,7 +6,9 @@ import "fmt"
 const EventTypeRegistration = "registration"
 const EventTypePlayerJoined = "player_joined"
 const EventTypePanic = "panic"
-const EventTypeAttackStateUpdate = "attack_state_update"
+const EventTypeAttackFinished = "attack_finished"
+const EventTypeAttackInitiated = "attack_initiated"
+const EventTypeDefenseModuleInstalled = "defense_module_installed"
 
 // Describes a message sent to the bus
 type BusEvent struct {
@@ -36,15 +38,37 @@ func (be BusEvent) DecodePlayerJoinedEvent() (*PlayerJoinedEvent, error) {
 	return nil, fmt.Errorf("Event is not player joined")
 }
 
-// Decodes an attack status update event
-func (be BusEvent) DecodeAttackStateUpdateEvent() (*AttackStateUpdateEvent, error) {
-	if be.Type != EventTypeAttackStateUpdate {
-		return nil, fmt.Errorf("Event is not attack state update")
+// Decodes an attack finished event
+func (be BusEvent) DecodeAttackFinishedEvent() (*AttackFinishedEvent, error) {
+	if be.Type != EventTypeAttackFinished {
+		return nil, fmt.Errorf("Event is not attack finished")
 	}
-	if conv, ok := be.Information.(AttackStateUpdateEvent); ok {
+	if conv, ok := be.Information.(AttackFinishedEvent); ok {
 		return &conv, nil
 	}
-	return nil, fmt.Errorf("Event is not attack state update")
+	return nil, fmt.Errorf("Event is not attack finished")
+}
+
+// Decodes an attack initiated event
+func (be BusEvent) DecodeAttackInitiatedEvent() (*AttackInitiatedEvent, error) {
+	if be.Type != EventTypeAttackInitiated {
+		return nil, fmt.Errorf("Event is not attack initiated")
+	}
+	if conv, ok := be.Information.(AttackInitiatedEvent); ok {
+		return &conv, nil
+	}
+	return nil, fmt.Errorf("Event is not attack initiated")
+}
+
+// Decodes an attack initiated event
+func (be BusEvent) DecodeDefenseModuleInstalledEvent() (*DefenseModuleInstalledEvent, error) {
+	if be.Type != EventTypeDefenseModuleInstalled {
+		return nil, fmt.Errorf("Event is not defense module installed")
+	}
+	if conv, ok := be.Information.(DefenseModuleInstalledEvent); ok {
+		return &conv, nil
+	}
+	return nil, fmt.Errorf("Event is not defense module installed")
 }
 
 // Describes a registration event
@@ -61,8 +85,20 @@ type PlayerJoinedEvent struct {
 }
 
 // Describes a success or a fail for an attack
-type AttackStateUpdateEvent struct {
+type AttackFinishedEvent struct {
 	AttackerName  string
 	ChallengeName string
 	Success       bool
+}
+
+// Happens when a new attack is started
+type AttackInitiatedEvent struct {
+	AttackerName  string
+	ChallengeName string
+}
+
+// Happens when a new defense module is added to the system
+type DefenseModuleInstalledEvent struct {
+	Name        string
+	CreatorName string
 }

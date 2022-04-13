@@ -165,7 +165,15 @@ Example message:
 {
   "type": "attack_result",
   "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
-  "success": true
+  "success": true,
+  "message": ""
+}
+
+{
+  "type": "attack_result",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "success": false,
+  "message": "Solutions array was too long"
 }
 ```
 
