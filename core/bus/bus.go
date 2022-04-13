@@ -53,7 +53,7 @@ func (b Bus) Listen(topic string) <-chan *BusEvent {
 }
 
 func (b Bus) Send(event *BusEvent) {
-	logrus.Infof("New bus event: %s\n", spew.Sdump(event))
+	logrus.Infof("New bus event: %s", spew.Sdump(event))
 	b.main <- event
 }
 

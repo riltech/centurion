@@ -75,8 +75,8 @@ You can find details here about how the point system works
 #### Attackers
 
 Individual scoring
-* You get 1 point for every successful challenge resolution (you don't get points for invalid solutions)
-* You get 1 point for every 5 challenge solved
+* You get 1 point for every successful challenge resolution (you don't get points for invalid solutions) that you have not completed before
+* You get 1 point for every 5 unique challenge solved
 * You get 1 point for every attack where the defender has failed to defend
 
 Team scoring

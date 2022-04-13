@@ -7,7 +7,10 @@ import (
 
 	"github.com/riltech/centurion/core"
 	"github.com/riltech/centurion/core/bus"
+	"github.com/riltech/centurion/core/combat"
 	"github.com/riltech/centurion/core/config"
+	"github.com/riltech/centurion/core/player"
+	"github.com/riltech/centurion/core/scoreboard"
 	"github.com/riltech/centurion/example"
 	"github.com/sirupsen/logrus"
 )
@@ -31,7 +34,24 @@ func main() {
 	}
 	exitHandler := core.NewExitHandler()
 	bus := bus.NewBus()
-	engine, dashboard := core.NewEngine(bus), core.NewDashboard(bus)
+	playerRepo := player.NewRepository()
+	playerService := player.NewService(playerRepo)
+	scoreRepository := scoreboard.NewRepository()
+	scoreService := scoreboard.NewService(scoreRepository, playerService)
+	combatRepository := combat.NewRepository()
+	combatService := combat.NewService(combatRepository)
+	engine := core.NewEngine(
+		bus,
+		scoreService,
+		combatService,
+		playerService,
+	)
+	dashboard := core.NewDashboard(
+		bus,
+		scoreService,
+		combatService,
+		playerService,
+	)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	var exampleAttacker example.IAttacker

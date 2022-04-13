@@ -16,6 +16,8 @@ type IRepository interface {
 	UpdateByID(ID string, update Model) (Model, error)
 	// Finds a user by ID
 	FindByID(ID string) (Model, error)
+	// Add given amounts of points to a player
+	AddPoint(ID string, points int) (Model, error)
 }
 
 // Engine repository implementation
@@ -90,6 +92,22 @@ func (r *Repository) FindByID(ID string) (Model, error) {
 		}
 	}
 	return Model{}, fmt.Errorf("%s user not found", ID)
+}
+
+func (r *Repository) AddPoint(ID string, points int) (Model, error) {
+	if r == nil {
+		return Model{}, fmt.Errorf("Repository is not initialised")
+	}
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	for i, p := range r.players {
+		if p.ID == ID {
+			p.Score = p.Score + points
+			r.players[i].Score = p.Score
+			return p, nil
+		}
+	}
+	return Model{}, fmt.Errorf("%s player not found", ID)
 }
 
 // Constructor to create a new engine repository

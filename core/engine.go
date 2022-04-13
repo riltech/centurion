@@ -11,6 +11,7 @@ import (
 	"github.com/riltech/centurion/core/combat"
 	"github.com/riltech/centurion/core/engine"
 	"github.com/riltech/centurion/core/player"
+	"github.com/riltech/centurion/core/scoreboard"
 	"github.com/sirupsen/logrus"
 )
 
@@ -61,18 +62,19 @@ func (e Engine) Stop() {
 }
 
 // Constructor for Engine
-func NewEngine(bus bus.IBus) IEngine {
-	playerRepo := player.NewRepository()
-	playerService := player.NewService(playerRepo)
+func NewEngine(
+	bus bus.IBus,
+	scoreService scoreboard.IService,
+	combatService combat.IService,
+	playerService player.IService,
+) IEngine {
 	challengeRepo := challenge.NewRepository()
 	challengeService := challenge.NewService(challengeRepo)
-	combatRepo := combat.NewRepository()
-	combatService := combat.NewService(combatRepo)
 	err := challengeService.AddDefaultModules()
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	engineService := engine.NewService(bus, playerService, challengeService, combatService)
+	engineService := engine.NewService(bus, playerService, challengeService, combatService, scoreService)
 	return &Engine{
 		// Available after start is called
 		router: nil,
@@ -80,6 +82,6 @@ func NewEngine(bus bus.IBus) IEngine {
 
 		// Available as the instance is created
 		bus:  bus,
-		ctrl: engine.NewController(bus, engineService, playerService, challengeService),
+		ctrl: engine.NewController(bus, engineService, playerService, challengeService, scoreService),
 	}
 }

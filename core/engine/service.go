@@ -12,7 +12,9 @@ import (
 	"github.com/riltech/centurion/core/challenge"
 	"github.com/riltech/centurion/core/combat"
 	"github.com/riltech/centurion/core/engine/dto"
+	"github.com/riltech/centurion/core/logger"
 	"github.com/riltech/centurion/core/player"
+	"github.com/riltech/centurion/core/scoreboard"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,6 +30,7 @@ type Service struct {
 	playerService    player.IService
 	challengeService challenge.IService
 	combatService    combat.IService
+	scoreService     scoreboard.IService
 
 	activeConnections map[string]*websocket.Conn
 	mux               sync.RWMutex
@@ -336,6 +339,10 @@ func (s *Service) attacker(ID string) error {
 				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateDefenseFailed); err != nil {
 					logrus.Error(err)
 				}
+				// Add 1 point to the attacker
+				if err = s.scoreService.AddPoint(ID, 1); err != nil {
+					logger.LogError(err)
+				}
 				if isConnectionStillAlive := s.sendResponseOrBreakConnection(ID, dto.DefenderFailedToDefendEvent{
 					SocketEvent: dto.SocketEvent{
 						Type: dto.SocketEventTypeDefenderFailedToDefend,
@@ -356,6 +363,7 @@ func (s *Service) attacker(ID string) error {
 					},
 					TargetID:  target.ID,
 					Solutions: detailedEvent.Solutions,
+					Hints:     detailedEvent.Hints,
 					CombatID:  ongoingCombat.ID,
 				})
 			}
@@ -502,12 +510,22 @@ func (s *Service) defender(ID string) error {
 				}
 				continue
 			}
+			// Add a point for the defender for the successful flow
+			if err = s.scoreService.AddPoint(ID, 1); err != nil {
+				logger.LogError(err)
+			}
 			// Here it does not really matter if the attacker is not online
 			// worst case scenario the attacker does not receive the result
 			// of the combat
 			stateToUpdate := combat.CombatStateDefenseSucceeded
 			if detailedEvent.Success {
 				stateToUpdate = combat.CombatStateAttackSucceeded
+				if !s.combatService.IsAttackerCompletedBefore(attacker.ID, detailedEvent.TargetID) {
+					// Add a point for the attacker for the first successful attack
+					if err = s.scoreService.AddPoint(attacker.ID, 1); err != nil {
+						logger.LogError(err)
+					}
+				}
 			}
 			if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, stateToUpdate); err != nil {
 				logrus.Error(err)
@@ -544,13 +562,15 @@ func NewService(
 	playerService player.IService,
 	challengeService challenge.IService,
 	combatService combat.IService,
+	scoreService scoreboard.IService,
 ) IService {
 	return &Service{
-		bus,
-		playerService,
-		challengeService,
-		combatService,
-		make(map[string]*websocket.Conn),
-		sync.RWMutex{},
+		bus:               bus,
+		playerService:     playerService,
+		challengeService:  challengeService,
+		combatService:     combatService,
+		activeConnections: make(map[string]*websocket.Conn),
+		mux:               sync.RWMutex{},
+		scoreService:      scoreService,
 	}
 }

@@ -9,6 +9,7 @@ const EventTypePanic = "panic"
 const EventTypeAttackFinished = "attack_finished"
 const EventTypeAttackInitiated = "attack_initiated"
 const EventTypeDefenseModuleInstalled = "defense_module_installed"
+const EventTypeDefenseFailed = "defense_failed"
 
 // Describes a message sent to the bus
 type BusEvent struct {
@@ -60,7 +61,7 @@ func (be BusEvent) DecodeAttackInitiatedEvent() (*AttackInitiatedEvent, error) {
 	return nil, fmt.Errorf("Event is not attack initiated")
 }
 
-// Decodes an attack initiated event
+// Decodes a defense module installed event
 func (be BusEvent) DecodeDefenseModuleInstalledEvent() (*DefenseModuleInstalledEvent, error) {
 	if be.Type != EventTypeDefenseModuleInstalled {
 		return nil, fmt.Errorf("Event is not defense module installed")
@@ -69,6 +70,17 @@ func (be BusEvent) DecodeDefenseModuleInstalledEvent() (*DefenseModuleInstalledE
 		return &conv, nil
 	}
 	return nil, fmt.Errorf("Event is not defense module installed")
+}
+
+// Decodes a defense failed event
+func (be BusEvent) DecodeDefenseFailedEvent() (*DefenseFailedEvent, error) {
+	if be.Type != EventTypeDefenseFailed {
+		return nil, fmt.Errorf("Event is not defense failed")
+	}
+	if conv, ok := be.Information.(DefenseFailedEvent); ok {
+		return &conv, nil
+	}
+	return nil, fmt.Errorf("Event is failed")
 }
 
 // Describes a registration event
@@ -101,4 +113,10 @@ type AttackInitiatedEvent struct {
 type DefenseModuleInstalledEvent struct {
 	Name        string
 	CreatorName string
+}
+
+// Happens when a defender fails to defend their module
+type DefenseFailedEvent struct {
+	DefenderName string
+	AttackerName string
 }

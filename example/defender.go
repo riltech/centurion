@@ -173,6 +173,9 @@ func (d Defender) Start() {
 			if len(detailedEvent.Hints) != 1 || len(detailedEvent.Solutions) != 1 {
 				logger.LogError(fmt.Errorf("Received hints and solutions are not what expected"))
 				if err = conn.WriteJSON(dto.SolutionEvaluationEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluation,
+					},
 					TargetID: detailedEvent.TargetID,
 					CombatID: detailedEvent.CombatID,
 					Success:  false,
@@ -185,6 +188,9 @@ func (d Defender) Start() {
 			hint, ok := detailedEvent.Hints[0].(string)
 			if !ok {
 				if err = conn.WriteJSON(dto.SolutionEvaluationEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluation,
+					},
 					TargetID: detailedEvent.TargetID,
 					CombatID: detailedEvent.CombatID,
 					Success:  false,
@@ -197,6 +203,9 @@ func (d Defender) Start() {
 			solution, ok := detailedEvent.Solutions[0].(string)
 			if !ok {
 				if err = conn.WriteJSON(dto.SolutionEvaluationEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluation,
+					},
 					TargetID: detailedEvent.TargetID,
 					CombatID: detailedEvent.CombatID,
 					Success:  false,
@@ -208,6 +217,9 @@ func (d Defender) Start() {
 			}
 			if hint != "12345678910" || solution != "01987654321" {
 				if err = conn.WriteJSON(dto.SolutionEvaluationEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluation,
+					},
 					TargetID: detailedEvent.TargetID,
 					CombatID: detailedEvent.CombatID,
 					Success:  false,
@@ -217,6 +229,9 @@ func (d Defender) Start() {
 				}
 			} else {
 				if err = conn.WriteJSON(dto.SolutionEvaluationEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluation,
+					},
 					TargetID: detailedEvent.TargetID,
 					CombatID: detailedEvent.CombatID,
 					Success:  true,

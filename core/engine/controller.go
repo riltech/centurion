@@ -13,6 +13,7 @@ import (
 	"github.com/riltech/centurion/core/challenge"
 	"github.com/riltech/centurion/core/engine/dto"
 	"github.com/riltech/centurion/core/player"
+	"github.com/riltech/centurion/core/scoreboard"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,6 +37,7 @@ type Controller struct {
 	engineService    IService
 	playerService    player.IService
 	challengeService challenge.IService
+	scoreService     scoreboard.IService
 
 	// Websocket
 	upgrader websocket.Upgrader
@@ -47,12 +49,14 @@ func NewController(
 	engineService IService,
 	playerService player.IService,
 	challengeService challenge.IService,
+	scoreService scoreboard.IService,
 ) IConroller {
 	return &Controller{
 		bus,
 		engineService,
 		playerService,
 		challengeService,
+		scoreService,
 		websocket.Upgrader{},
 	}
 }
@@ -161,7 +165,6 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 }
 
 func (c Controller) PlayerJoin(w http.ResponseWriter, r *http.Request) {
-	logrus.Info("Got request")
 	connection, err := c.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logrus.Error("upgrade:", err)
@@ -216,12 +219,18 @@ func (c Controller) InstallChallenge(w http.ResponseWriter, r *http.Request, _ h
 			Solutions: reqDTO.Example.Solutions,
 		},
 	}
+	isFirstModule := c.challengeService.IsFirstModule(toCreate)
 	err = c.challengeService.AddChallenge(toCreate)
 	if err != nil {
 		response.BadRequest(w, map[string]interface{}{
 			"reason": err.Error(),
 		})
 		return
+	}
+	if isFirstModule {
+		if err = c.scoreService.AddPoint(reqDTO.DefenderID, 1); err != nil {
+			logrus.Error(err)
+		}
 	}
 	c.bus.Send(&bus.BusEvent{
 		Type: bus.EventTypeDefenseModuleInstalled,

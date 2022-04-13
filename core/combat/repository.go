@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Describes a repository for the engine
+// Describes a repository for the combat package
 type IRepository interface {
 	// Fetches the available combats in the system
 	GetCombats() []Model
@@ -18,6 +18,8 @@ type IRepository interface {
 	FindByID(ID string) (Model, error)
 	// Updates combat state
 	UpdateCombatState(ID string, state string) (Model, error)
+	// Returns the archive (aka finished events)
+	GetArchive() []Model
 }
 
 // Combat repository implementation
@@ -103,6 +105,15 @@ func (r *Repository) UpdateCombatState(ID string, state string) (Model, error) {
 		}
 	}
 	return Model{}, fmt.Errorf("%s not found", ID)
+}
+
+func (r *Repository) GetArchive() []Model {
+	if r == nil {
+		return nil
+	}
+	r.mux.RLock()
+	defer r.mux.RUnlock()
+	return r.archive
 }
 
 // Constructor to create a new engine repository

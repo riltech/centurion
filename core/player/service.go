@@ -14,6 +14,11 @@ type IService interface {
 	FindByID(ID string) (Model, error)
 	// Checks if a given player is already registered or not
 	IsPlayerExist(*Model) bool
+	// Add given amounts of points to a player
+	AddPoint(ID string, points int) (Model, error)
+	// Fetch a given team completely
+	// use Team enums for the string
+	GetTeam(team string) []Model
 }
 
 type Service struct {
@@ -53,6 +58,21 @@ func (s Service) SetPlayerOnlineStatus(ID string, online bool) (Model, error) {
 
 func (s Service) FindByID(ID string) (Model, error) {
 	return s.repository.FindByID(ID)
+}
+
+func (s Service) AddPoint(ID string, points int) (Model, error) {
+	return s.repository.AddPoint(ID, points)
+}
+
+func (s Service) GetTeam(team string) []Model {
+	players := s.repository.GetPlayers()
+	toReturn := []Model{}
+	for _, p := range players {
+		if p.Team == team {
+			toReturn = append(toReturn, p)
+		}
+	}
+	return toReturn
 }
 
 func NewService(repository IRepository) IService {

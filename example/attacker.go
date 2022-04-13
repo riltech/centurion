@@ -210,7 +210,7 @@ func (a Attacker) Start() {
 					},
 					Hints:     detailedEvent.Hints,
 					Solutions: []interface{}{solution},
-					TargetID:  selected.ID,
+					TargetID:  detailedEvent.TargetID,
 				})
 				continue
 			default:

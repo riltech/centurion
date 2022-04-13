@@ -18,6 +18,8 @@ type IService interface {
 	GenerateHintForDefault(Model) ([]interface{}, error)
 	// Validates a given solution for a default module
 	IsValidSolutionToDefaultModule(m Model, hints []interface{}, solutions []interface{}) (bool, error)
+	// Returns if this is the first module of the defender
+	IsFirstModule(Model) bool
 }
 
 type Service struct {
@@ -26,6 +28,10 @@ type Service struct {
 
 // Interface check
 var _ IService = (*Service)(nil)
+
+func NewService(repository IRepository) IService {
+	return &Service{repository}
+}
 
 func (s Service) GetChallenges() []Model {
 	return s.repository.GetChallenges()
@@ -46,10 +52,6 @@ func (s Service) AddChallenge(m Model) error {
 	return s.repository.AddChallenge(m)
 }
 
-func NewService(repository IRepository) IService {
-	return &Service{repository}
-}
-
 func (s Service) AddDefaultModules() error {
 	for _, challenge := range getDefaultChallenges() {
 		if err := s.repository.AddChallenge(challenge); err != nil {
@@ -65,4 +67,14 @@ func (s Service) GenerateHintForDefault(m Model) ([]interface{}, error) {
 
 func (s Service) IsValidSolutionToDefaultModule(m Model, hints []interface{}, solutions []interface{}) (bool, error) {
 	return isValidDefaultModuleSolution(m, hints, solutions)
+}
+
+func (s Service) IsFirstModule(m Model) bool {
+	numberOfModules := 0
+	for _, c := range s.repository.GetChallenges() {
+		if c.CreatorID == m.CreatorID {
+			numberOfModules++
+		}
+	}
+	return numberOfModules == 0
 }
