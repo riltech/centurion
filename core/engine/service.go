@@ -64,14 +64,24 @@ func (s *Service) Join(event dto.JoinEvent, conn *websocket.Conn) error {
 // returns status [true] if the connection is alive
 // returns [false] if the connection was terminated
 func (s *Service) sendError(ID string, message string) (isConnectionStillAlive bool) {
+	defer func(alive *bool) {
+		if *alive {
+			return
+		}
+		if _, err := s.playerService.SetPlayerOnlineStatus(ID, false); err != nil {
+			logrus.Error(err)
+		}
+	}(&isConnectionStillAlive)
 	if s == nil {
-		return false
+		isConnectionStillAlive = false
+		return
 	}
 	s.mux.RLock()
 	conn, ok := s.activeConnections[ID]
 	if !ok {
 		s.mux.RUnlock()
-		return false
+		isConnectionStillAlive = false
+		return
 	}
 	s.mux.RUnlock()
 
@@ -83,27 +93,40 @@ func (s *Service) sendError(ID string, message string) (isConnectionStillAlive b
 	}); err != nil {
 		logrus.Error(err)
 		s.closeConnection(ID)
-		return false
+		isConnectionStillAlive = false
+		return
 	}
-	return true
+	isConnectionStillAlive = true
+	return
 }
 
 // This function sends a response to the socket
 // or if it is not alive anymore it breaks the connection
 func (s *Service) sendResponseOrBreakConnection(ID string, message interface{}) (isConnectionStillAlive bool) {
+	defer func(alive *bool) {
+		if *alive {
+			return
+		}
+		if _, err := s.playerService.SetPlayerOnlineStatus(ID, false); err != nil {
+			logrus.Error(err)
+		}
+	}(&isConnectionStillAlive)
 	s.mux.RLock()
 	conn, ok := s.activeConnections[ID]
 	if !ok {
 		s.mux.RUnlock()
 		s.closeConnection(ID)
-		return false
+		isConnectionStillAlive = false
+		return
 	}
 	s.mux.RUnlock()
 	if err := conn.WriteJSON(message); err != nil {
 		s.closeConnection(ID)
-		return false
+		isConnectionStillAlive = false
+		return
 	}
-	return true
+	isConnectionStillAlive = true
+	return
 }
 
 // Command set for attackers
@@ -219,6 +242,7 @@ func (s *Service) attacker(ID string) error {
 						Type: dto.SocketEventTypeDefenderFailedToDefend,
 					},
 					TargetID: target.ID,
+					CombatID: newCombat.ID,
 				})
 			}
 			continue
@@ -312,6 +336,7 @@ func (s *Service) attacker(ID string) error {
 					},
 					TargetID:  target.ID,
 					Solutions: detailedEvent.Solutions,
+					CombatID:  ongoingCombat.ID,
 				})
 			}
 			continue
@@ -337,11 +362,146 @@ func (s *Service) closeConnection(ID string) {
 // Command set for defenders
 func (s *Service) defender(ID string) error {
 	s.mux.RLock()
-	_, ok := s.activeConnections[ID]
+	conn, ok := s.activeConnections[ID]
 	if !ok {
 		return fmt.Errorf("%s user is not available in active players", ID)
 	}
 	s.mux.RUnlock()
+	for {
+		// Acquire message
+		t, b, err := conn.ReadMessage()
+		if t == websocket.CloseMessage {
+			s.closeConnection(ID)
+			break
+		}
+		if err != nil {
+			logrus.Error(err)
+			s.closeConnection(ID)
+			break
+		}
+		// Deserialize message
+		var event dto.SocketEvent
+		if err = json.Unmarshal(b, &event); err != nil {
+			if stillActive := s.sendError(ID, "Could not parse Socket Event"); !stillActive {
+				break
+			}
+			continue
+		}
+		// Process of valid events
+		if event.Type == dto.SocketEventTypeDefendAction {
+			var detailedEvent dto.DefendActionEvent
+			if err = json.Unmarshal(b, &detailedEvent); err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Could not parse Defend Action Event"); !stillActive {
+					break
+				}
+				continue
+			}
+			ongoingCombat, err := s.combatService.FindByID(detailedEvent.CombatID)
+			if err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Invalid combat ID"); !stillActive {
+					break
+				}
+				continue
+			}
+			if ongoingCombat.IsInFinalState() {
+				if stillActive := s.sendError(ID, "Combat is already over, state is: "+ongoingCombat.CombatState); !stillActive {
+					break
+				}
+				continue
+			}
+			attacker, err := s.playerService.FindByID(ongoingCombat.AttackerID)
+			if err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Invalid attacker ID in Combat"); !stillActive {
+					break
+				}
+				continue
+			}
+			if !attacker.Online {
+				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateAttackFailed); err != nil {
+					logrus.Error(err)
+				}
+				if isConnectionStillAlive := s.sendResponseOrBreakConnection(ID, dto.AttackerFailedToAttackEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeAttackerFailedToAttack,
+					},
+					TargetID: ongoingCombat.ChallengeID,
+					CombatID: ongoingCombat.ID,
+				}); !isConnectionStillAlive {
+					break
+				}
+			} else {
+				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateAttackerChallenged); err != nil {
+					logrus.Error(err)
+				}
+				// if the connection is not alive here that's the problem of the potential
+				// go routine handling the given defender
+				s.sendResponseOrBreakConnection(attacker.ID, dto.AttackChallengeEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluationRequest,
+					},
+					TargetID: ongoingCombat.ChallengeID,
+					Hints:    detailedEvent.Hints,
+				})
+			}
+			continue
+		}
+		if event.Type == dto.SocketEventTypeSolutionEvaluation {
+			var detailedEvent dto.SolutionEvaluationEvent
+			if err = json.Unmarshal(b, &detailedEvent); err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Could not parse Defend Action Event"); !stillActive {
+					break
+				}
+				continue
+			}
+			ongoingCombat, err := s.combatService.FindByID(detailedEvent.CombatID)
+			if err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Invalid combat ID"); !stillActive {
+					break
+				}
+				continue
+			}
+			if ongoingCombat.IsInFinalState() {
+				if stillActive := s.sendError(ID, "Combat is already over, state is: "+ongoingCombat.CombatState); !stillActive {
+					break
+				}
+				continue
+			}
+			attacker, err := s.playerService.FindByID(ongoingCombat.AttackerID)
+			if err != nil {
+				logrus.Error(err)
+				if stillActive := s.sendError(ID, "Invalid attacker ID in Combat"); !stillActive {
+					break
+				}
+				continue
+			}
+			// Here it does not really matter if the attacker is not online
+			// worst case scenario the attacker does not receive the result
+			// of the combat
+			stateToUpdate := combat.CombatStateDefenseSucceeded
+			if detailedEvent.Success {
+				stateToUpdate = combat.CombatStateAttackSucceeded
+			}
+			if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, stateToUpdate); err != nil {
+				logrus.Error(err)
+			}
+			if attacker.Online {
+				s.sendResponseOrBreakConnection(attacker.ID, dto.AttackResultEvent{
+					SocketEvent: dto.SocketEvent{
+						Type: dto.SocketEventTypeSolutionEvaluationRequest,
+					},
+					TargetID: ongoingCombat.ChallengeID,
+					Success:  detailedEvent.Success,
+				})
+			}
+			continue
+		}
+		continue
+	}
 	return nil
 }
 

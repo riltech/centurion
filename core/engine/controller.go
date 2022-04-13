@@ -18,7 +18,15 @@ import (
 
 // Describes the interface of the engine controller
 type IConroller interface {
+	// Endpoint for fetching currently available challenges
+	FetchChallanges(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	// Endpoint for installing defense modules
+	InstallChallenge(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	// Endpoint for registration
 	Register(http.ResponseWriter, *http.Request, httprouter.Params)
+	// Entry point for the websocket API
+	PlayerJoin(w http.ResponseWriter, r *http.Request)
+	// Boostrapping of the router
 	GetRouter() *httprouter.Router
 }
 
@@ -60,7 +68,6 @@ func (c Controller) cleanUp(w http.ResponseWriter) {
 	(*ResponseCreator)(nil).InternalServerError(w)
 }
 
-// Returns the available challenges
 func (c Controller) FetchChallanges(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var response *ResponseCreator
 	defer c.cleanUp(w)
@@ -153,7 +160,6 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 	})
 }
 
-// Handles players who join the live game
 func (c Controller) PlayerJoin(w http.ResponseWriter, r *http.Request) {
 	logrus.Info("Got request")
 	connection, err := c.upgrader.Upgrade(w, r, nil)
@@ -175,11 +181,63 @@ func (c Controller) PlayerJoin(w http.ResponseWriter, r *http.Request) {
 	c.engineService.Join(join, connection)
 }
 
+func (c Controller) InstallChallenge(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var response *ResponseCreator
+	defer c.cleanUp(w)
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		response.BadRequest(w, map[string]interface{}{
+			"reason": "Body is malformed",
+		})
+		return
+	}
+	var reqDTO dto.InstallChallengeRequest
+	if err = json.Unmarshal(b, &reqDTO); err != nil {
+		response.BadRequest(w, map[string]interface{}{
+			"reason": "Body is malformed",
+		})
+		return
+	}
+	if defender, err := c.playerService.FindByID(reqDTO.DefenderID); err != nil || defender.Team != player.TeamTypeDefender {
+		response.BadRequest(w, map[string]interface{}{
+			"reason": "Defender ID is invalid or not found",
+		})
+		return
+	}
+	toCreate := challenge.Model{
+		Type:        challenge.ChallengeTypePlayerCreated,
+		ID:          uuid.NewString(),
+		CreatorID:   reqDTO.DefenderID,
+		Name:        reqDTO.Name,
+		Description: reqDTO.Description,
+		Example: challenge.Example{
+			Hints:     reqDTO.Example.Hints,
+			Solutions: reqDTO.Example.Solutions,
+		},
+	}
+	err = c.challengeService.AddChallenge(toCreate)
+	if err != nil {
+		response.BadRequest(w, map[string]interface{}{
+			"reason": err.Error(),
+		})
+		return
+	}
+	response.OK(w, dto.InstallChallengeResponse{
+		CenturionResponse: dto.CenturionResponse{
+			Message: "Success",
+			Code:    200,
+			Meta:    nil,
+		},
+		ID: toCreate.ID,
+	})
+}
+
 // Creates a new router
 func (c Controller) GetRouter() *httprouter.Router {
 	router := httprouter.New()
 	router.POST("/team/register", c.Register)
 	router.GET("/challenges", c.FetchChallanges)
+	router.POST("/challenges", c.InstallChallenge)
 	router.HandlerFunc("GET", "/team/join", c.PlayerJoin)
 	return router
 }

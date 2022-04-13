@@ -5,6 +5,7 @@ There are two APIs available and to participate in the game you need to implemen
 * [REST](#rest)
   * [Registration](#registration)
   * [List available challenges](#list-available-challenges)
+  * [Install a new challenge](#install-a-new-challenge)
 * [Websocket](#websocket)
   * [join](#join)
   * [error](#error)
@@ -51,7 +52,7 @@ POST /team/register
 
 #### List available challenges
 
-You can use the REST API to list all available challenges
+You can use this endpoint as an attacker to list all available challenges
 
 ```
 GET /challenges
@@ -75,6 +76,41 @@ GET /challenges
   ]
 }
 ```
+
+#### Install a new challenge
+
+You can use this endpoint as a defender to install new challenges in the system
+
+NOTE: You will be expected to handle hint and solution evaluation requests as soon as you
+installed a new module. So ideally you want to get ready for those steps, and this is the last step in your challenge creation flow.
+
+```
+POST /challenges
+```
+
+[Request body](../core/engine/dto/challenge.go)
+```js
+{
+  name: "Reverse sorter",
+  defenderId: "e256557a-e5c6-4475-a525-9857ea87cdad",
+  description: "You receive a random length string array in the first parameter of the hints. Your aim is to change the order of the array and send it back as the first parameter of the solution array",
+  example: {
+    hints: ["123456"],
+    solutions: ["654321"]
+  }
+}
+```
+
+[Response body](../core/engine/dto/challenge.go):
+```js
+{
+  message: "Success",
+  code: 200,
+  id: "fbb89d0f-3f11-43dc-a7fa-f31265df740b"
+}
+```
+
+You need to persist this ID from the response, as the system will use it to refer to your challenges when you are requested to provide hints or solution evaluations.
 
 ## Websocket
 
@@ -180,7 +216,8 @@ Example message:
 ```js
 {
   "type": "defend_action_request",
-  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad"
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "combatId": "8049a606-6861-4536-8bcc-6449f50ae240"
 }
 ```
 
@@ -193,6 +230,7 @@ Example message:
 {
   "type": "defend_action",
   "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "combatId": "8049a606-6861-4536-8bcc-6449f50ae240",
   "hints": ["123456"]
 }
 ```
@@ -206,6 +244,7 @@ Example message:
 {
   "type": "solution_evaluation_request",
   "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "combatId": "8049a606-6861-4536-8bcc-6449f50ae240",
   "hints": ["123456"],
   "solutions": ["654321"]
 }
@@ -220,6 +259,7 @@ Example message:
 {
   "type": "solution_evaluation",
   "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "combatId": "8049a606-6861-4536-8bcc-6449f50ae240",
   "success": false,
   "message": "Solutions array is too short"
 }

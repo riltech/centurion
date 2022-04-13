@@ -7,6 +7,7 @@ const SocketEventTypeAttack = "attack"
 const SocketEventTypeAttackResult = "attack_result"
 const SocketEventTypeAttackChallenge = "attack_challenge"
 const SocketEventTypeAttackSolution = "attack_solution"
+const SocketEventTypeAttackerFailedToAttack = "attacker_failed_to_attack"
 const SocketEventTypeDefenderFailedToDefend = "defender_failed_to_defend"
 const SocketEventTypeDefendActionRequest = "defend_action_request"
 const SocketEventTypeDefendAction = "defend_action"
@@ -77,6 +78,16 @@ type DefenderFailedToDefendEvent struct {
 	TargetID string `json:"targetId"`
 }
 
+// Happens when an attacker cannot provide solutions for hints
+// or goes offline during the attack flow
+type AttackerFailedToAttackEvent struct {
+	SocketEvent
+	// ID of the challenge
+	TargetID string `json:"targetId"`
+	// ID of the combat
+	CombatID string `json:"combatId"`
+}
+
 // Happens when an attacker attacks a challenge module
 // installed by a defender and the module owner
 // has to defend
@@ -84,6 +95,10 @@ type DefendActionRequestEvent struct {
 	SocketEvent
 	// ID of the challenge
 	TargetID string `json:"targetId"`
+	// Combat ID is the ID of the combat in which
+	// the action is requested
+	// NOTE: This needs to be echo'd back in the action
+	CombatID string `json:"combatId"`
 }
 
 // Happens when a defender sends out hints
@@ -92,6 +107,8 @@ type DefendActionEvent struct {
 	SocketEvent
 	// Hints generated for the challenge
 	Hints []interface{} `json:"hints"`
+	// ID of the given combat
+	CombatID string `json:"combatID"`
 }
 
 // Happens when the attacker hands in a solution
@@ -100,6 +117,8 @@ type SolutionEvaluationRequestEvent struct {
 	SocketEvent
 	// ID of the challenge
 	TargetID string `json:"targetId"`
+	// ID of the given combat
+	CombatID string `json:"combatId"`
 	// Solution array
 	Solutions []interface{} `json:"solutions"`
 	// Hints used for generating the solution
@@ -112,6 +131,8 @@ type SolutionEvaluationEvent struct {
 	SocketEvent
 	// ID of the challenge
 	TargetID string `json:"targetId"`
+	// ID of the given combat
+	CombatID string `json:"combatId"`
 	// Indicates if the evaluation was successful or not
 	Success bool `json:"success"`
 	// Optional message to pass on the challenger

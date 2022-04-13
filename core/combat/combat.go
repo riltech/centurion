@@ -20,3 +20,9 @@ type Model struct {
 	// Time of the last update on the model
 	LastUpdateAt time.Time
 }
+
+// Returns if the state is in the final stage
+// which indicates that it should be immutable
+func (m Model) IsInFinalState() bool {
+	return IsFinalCombatState(m.CombatState)
+}
