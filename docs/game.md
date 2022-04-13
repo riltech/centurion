@@ -9,6 +9,9 @@ You can find more detailed information about the flow and rules of the game here
   * [Challenge](#challenge)
   * [Attackers flow](#attackers-flow)
   * [Defenders flow](#defenders-flow)
+* [Point system](#point-system)
+  * [Attackers](#attackers)
+  * [Defenders](#defenders)
 
 ## Goal
 
@@ -63,3 +66,42 @@ Now a very **important difference** compared to an attacker is that you have to 
 When your challenge is being attacked, you will be requested to generate hint(s) for the challenge. This will be sent back to the attacker, then they need to provide solution(s) for the challenge. You need to validate the solution(s) provided for the challenge.
 
 **The challenge you design has to be deterministic**. Which means that for a given input, we always need to get a given output. You solution validation will be tested by Centurion using your examples.
+
+
+## Point system
+
+You can find details here about how the point system works
+
+#### Attackers
+
+Individual scoring
+* You get 1 point for every successful challenge resolution (you don't get points for invalid solutions)
+* You get 1 point for every 5 challenge solved
+* You get 1 point for every attack where the defender has failed to defend
+
+Team scoring
+
+At the end of the game your team acquires extra points based on your ability to coordinate. A challenge is solved completely if everyone in your team was able to resolve it.
+* You get 5 points if you (as a team) were able to solve at least 80% of the challenges
+* You get 1 point for every challenge that were completed to a 100%
+
+#### Defenders
+
+Individual scoring
+* You get 1 point if you have at least 1 challenge installed
+* You get 1 point for every successful defense flow (even if the attack is successful)
+* You get 1 point for every challenge solved, but not more than 50% of the attackers
+
+Team scoring
+
+At the end of the game your team acquires extra points based on your uptime as a team.
+* \> 97% - 10 points
+* \> 93% - 9 points
+* \> 89% - 8 points
+* \> 85% - 7 points
+* \> 82% - 6 points
+* \> 79% - 5 points
+* \> 75% - 4 points
+* \> 70% - 3 points
+* \> 65% - 2 points
+* < 65% - 1 point
