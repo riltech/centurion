@@ -165,7 +165,8 @@ func (s *Service) attacker(ID string) error {
 					SocketEvent: dto.SocketEvent{
 						Type: dto.SocketEventTypeAttackChallenge,
 					},
-					Hints: hints,
+					TargetID: target.ID,
+					Hints:    hints,
 				}); !isConnectionStillAlive {
 					break
 				}

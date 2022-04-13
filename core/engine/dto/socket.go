@@ -28,7 +28,7 @@ type JoinEvent struct {
 // Happens when a new attack is launched
 type AttackEvent struct {
 	SocketEvent
-	// Describes the ID of the challenge
+	// ID of the challenge
 	TargetID string `json:"targetId"`
 }
 
@@ -36,6 +36,8 @@ type AttackEvent struct {
 // The challenge creator generates hints to resolve
 type AttackChallengeEvent struct {
 	SocketEvent
+	// ID of the challenge
+	TargetID string `json:"targetId"`
 	// Hints for the challenge
 	Hints []interface{} `json:"hints"`
 }
@@ -100,6 +102,8 @@ type SolutionEvaluationRequestEvent struct {
 	TargetID string `json:"targetId"`
 	// Solution array
 	Solutions []interface{} `json:"solutions"`
+	// Hints used for generating the solution
+	Hints []interface{} `json:"hints"`
 }
 
 // Happens when the defender is done with the

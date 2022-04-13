@@ -2,10 +2,26 @@
 
 There are two APIs available and to participate in the game you need to implement both:
 
-* [Websocket](#websocket)
 * [REST](#rest)
+  * [Registration](#registration)
+  * [List available challenges](#list-available-challenges)
+* [Websocket](#websocket)
+  * [join](#join)
+  * [error](#error)
+  * [attack](#attack)
+  * [attack_challenge](#attack_challenge)
+  * [attack_result](#attack_result)
+  * [attack_solution](#attack_solution)
+  * [defender_failed_to_defend](#defender_failed_to_defend)
+  * [defend_action_request](#defend_action_request)
+  * [defend_action](#defend_action)
+  * [solution_evaluation_request](#solution_evaluation_request)
+  * [solution_evaluation](#solution_evaluation)
+* [Example usage](#example-usage)
 
 ## REST
+
+You can find all DTOs [here](../core/engine/dto). Feel free to use this types while playing the game.
 
 #### Registration
 
@@ -61,3 +77,154 @@ GET /challenges
 ```
 
 ## Websocket
+
+Websocket is available through `ws://host/team/join`. For this game we use [Gorilla Socket](https://github.com/gorilla/websocket) and it is recommended.
+
+You can find all socket events typed [here](../core/engine/dto/socket.go).
+
+You are encouraged to use this file either as a dependency or as a copy paste.
+
+#### join
+
+Emitted when the player is ready to join the live game.
+
+Example message:
+```js
+{
+  "type": "join",
+  "id": "e256557a-e5c6-4475-a525-9857ea87cdad"
+}
+```
+
+#### error
+
+Emitted when an error happened during the flow.
+
+Example message:
+```js
+{
+  "type": "error",
+  "message": "Could not parse Attack Event"
+}
+```
+
+#### attack
+
+Emitted to initiate an attack towards a challenge
+
+Example message:
+```js
+{
+  "type": "attack",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad"
+}
+```
+
+#### attack_result
+
+Emitted when an attacker receives results
+
+Example message:
+```js
+{
+  "type": "attack_result",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "success": true
+}
+```
+
+#### attack_challenge
+
+Emitted when hints are returned to the attacker
+
+Example message:
+```js
+{
+  "type": "attack_challenge",
+  "hints": ["123456"],
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad"
+}
+```
+
+#### attack_solution
+
+Emitted when an attacker sends in solutions for hints
+
+Example message:
+```js
+{
+  "type": "attack_solution",
+  "hints": ["123456"],
+  "solutions": ["654321"],
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad"
+}
+```
+
+#### defender_failed_to_defend
+
+Emitted when a defender was offline either at requesting hints or at requesting solution validation
+
+Example message:
+```js
+{
+  "type": "defender_failed_to_defend",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad"
+}
+```
+
+#### defend_action_request
+
+Emitted when the defender is requested to provide hints for an attacker
+
+Example message:
+```js
+{
+  "type": "defend_action_request",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad"
+}
+```
+
+#### defend_action
+
+Emitted when the defender is providing hints for a challenge
+
+Example message:
+```js
+{
+  "type": "defend_action",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "hints": ["123456"]
+}
+```
+
+#### solution_evaluation_request
+
+Emitted when the defender is requested to evaluate a given solution
+
+Example message:
+```js
+{
+  "type": "solution_evaluation_request",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "hints": ["123456"],
+  "solutions": ["654321"]
+}
+```
+
+#### solution_evaluation
+
+Emitted when the defender finished evaluation and ready to provide a result for the solutions
+
+Example message:
+```js
+{
+  "type": "solution_evaluation",
+  "targetId": "e256557a-e5c6-4475-a525-9857ea87cdad",
+  "success": false,
+  "message": "Solutions array is too short"
+}
+```
+
+## Example usage
+
+You can find examples for attacking and defending [here](../example).
