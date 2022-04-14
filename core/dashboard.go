@@ -153,12 +153,15 @@ func (d Dashboard) Start() {
 				continue
 			}
 			eventLog.Push(fmt.Sprintf("[Defense] %s installed new module '%s'", event.CreatorName, event.Name))
+			refresh()
 			ui.Render(grid)
 			continue
 		case e := <-termUIEvents:
 			if e.Type == ui.KeyboardEvent {
-				logrus.Infoln("Dashboard quits")
-				return
+				if e.ID == "q" {
+					logrus.Infoln("Dashboard quits")
+					return
+				}
 			}
 			continue
 		}

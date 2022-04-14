@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -66,6 +67,8 @@ func main() {
 		if exampleDefender != nil {
 			exampleDefender.Stop()
 		}
+		// Let's be really graceful
+		<-time.After(2 * time.Second)
 		wg.Done()
 	})
 	go engine.Start()
@@ -85,5 +88,12 @@ func main() {
 		}()
 	}
 	dashboard.Start()
+	if !exitHandler.IsRunning() {
+		exitHandler.Trigger()
+	}
 	wg.Wait()
+	fmt.Println("Final score")
+	attackers, defenders := scoreService.GetBoards()
+	fmt.Printf("Attackers %d - %d Defenders\n", attackers.OverallScore, defenders.OverallScore)
+	fmt.Println("Congratulations!")
 }

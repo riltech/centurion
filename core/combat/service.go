@@ -22,6 +22,13 @@ type IService interface {
 	// Returns the percentages of successful attack events
 	// values are between 0-100
 	GetAttackerSuccessPercent() int
+	// Returns if the solution is the 5th or 10th or 15th (etc..)
+	// NOTE: the given challengeId has to be pre-solved in combat
+	IsFifthUniqueSolution(attackerID string, challengeID string) bool
+	// Calculates how many percentage of challenges the attackers were able to solve
+	GetOverallAttackerSuccessPrecent(numberOfUniqueChallenges int) int
+	// Returns the number of how many attackers completed a given challenge
+	GetNumberOfUniqueCompletionsPerChallenges() map[string]uint
 }
 
 // Service implementation
@@ -119,6 +126,49 @@ func (s Service) GetAttackerSuccessPercent() int {
 		return 100
 	}
 	return int(float32(len(successEvents)) / float32(len(validEventsOverall)) * 100)
+}
+
+func (s Service) IsFifthUniqueSolution(attackerID string, challengeID string) bool {
+	archive := s.repository.GetArchive()
+	uniqueCompleted := map[string]int{}
+	for _, item := range archive {
+		if item.AttackerID == attackerID {
+			uniqueCompleted[item.ChallengeID] = 1
+		}
+	}
+	toStartWith := 0
+	if _, ok := uniqueCompleted[challengeID]; !ok {
+		toStartWith++
+	}
+	for _ = range uniqueCompleted {
+		toStartWith++
+	}
+	return toStartWith%5 == 0
+}
+
+func (s Service) GetOverallAttackerSuccessPrecent(numberOfUniqueChallenges int) int {
+	uniques := map[string]uint8{}
+	for _, a := range s.repository.GetArchive() {
+		if a.CombatState == CombatStateAttackSucceeded {
+			uniques[a.ChallengeID] = 1
+		}
+	}
+	return int((float32(len(uniques)) / float32(numberOfUniqueChallenges)) * 100)
+}
+
+func (s Service) GetNumberOfUniqueCompletionsPerChallenges() map[string]uint {
+	challengeCompletion := map[string]uint{}
+	archive := s.repository.GetArchive()
+	for _, a := range archive {
+		if a.CombatState != CombatStateAttackSucceeded {
+			continue
+		}
+		if _, ok := challengeCompletion[a.ID]; !ok {
+			challengeCompletion[a.ID] = 0
+		}
+		challengeCompletion[a.ID] = challengeCompletion[a.ID] + 1
+	}
+	return challengeCompletion
 }
 
 func NewService(repository IRepository) IService {

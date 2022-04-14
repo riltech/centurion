@@ -21,6 +21,8 @@ type IEngine interface {
 	Start()
 	// Stops the engine process
 	Stop()
+	// Calculates the results of the game
+	FinishGame()
 }
 
 // Engine implementation
@@ -30,7 +32,9 @@ type Engine struct {
 	server *http.Server
 
 	// Internal dependencies
-	ctrl engine.IConroller
+
+	ctrl    engine.IConroller
+	service engine.IService
 }
 
 // Interface check
@@ -54,11 +58,16 @@ func (e *Engine) Start() {
 }
 
 func (e Engine) Stop() {
+	e.FinishGame()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := e.server.Shutdown(ctx); err != nil {
 		panic(err)
 	}
+}
+
+func (e Engine) FinishGame() {
+	e.service.FinishGame()
 }
 
 // Constructor for Engine
@@ -81,7 +90,8 @@ func NewEngine(
 		server: nil,
 
 		// Available as the instance is created
-		bus:  bus,
-		ctrl: engine.NewController(bus, engineService, playerService, challengeService, scoreService),
+		bus:     bus,
+		ctrl:    engine.NewController(bus, engineService, playerService, challengeService, scoreService),
+		service: engineService,
 	}
 }

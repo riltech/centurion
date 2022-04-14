@@ -22,6 +22,8 @@ import (
 type IService interface {
 	// Handles join event for users
 	Join(dto.JoinEvent, *websocket.Conn) error
+	// Triggers all calculations for the end result of the game
+	FinishGame()
 }
 
 // Service implementation
@@ -483,7 +485,7 @@ func (s *Service) defender(ID string) error {
 			var detailedEvent dto.SolutionEvaluationEvent
 			if err = json.Unmarshal(b, &detailedEvent); err != nil {
 				logrus.Error(err)
-				if stillActive := s.sendError(ID, "Could not parse Defend Action Event"); !stillActive {
+				if stillActive := s.sendError(ID, "Could not parse Solution Evaluation Event"); !stillActive {
 					break
 				}
 				continue
@@ -525,6 +527,13 @@ func (s *Service) defender(ID string) error {
 					if err = s.scoreService.AddPoint(attacker.ID, 1); err != nil {
 						logger.LogError(err)
 					}
+					// Add a point for the attacker if it is module 5 solution (for every 5 unique)
+					if s.combatService.IsFifthUniqueSolution(attacker.ID, detailedEvent.TargetID) {
+						if err = s.scoreService.AddPoint(attacker.ID, 1); err != nil {
+							logger.LogError(err)
+						}
+					}
+
 				}
 			}
 			if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, stateToUpdate); err != nil {
@@ -554,6 +563,54 @@ func (s *Service) defender(ID string) error {
 		continue
 	}
 	return nil
+}
+
+func (s *Service) FinishGame() {
+	overallAttackerSuccess := s.combatService.GetOverallAttackerSuccessPrecent(
+		s.challengeService.GetNumberOfUniqueChallenges(),
+	)
+	if overallAttackerSuccess >= 80 {
+		// Add points for attacker team if they were at least 80 percent
+		// successful on challenges
+		s.scoreService.AwardTeam(player.TeamTypeAttacker, 5, "At least 80 percent successful on challenges")
+	}
+	// Add points for attackers for every 100% challenges
+	numberOfAttackers := len(s.playerService.GetTeam(player.TeamTypeAttacker))
+	uniqueChallengesSolved := s.combatService.GetNumberOfUniqueCompletionsPerChallenges()
+	scoresToGive := 0
+	for _, numberOfSuccessfulAttackers := range uniqueChallengesSolved {
+		if numberOfSuccessfulAttackers == uint(numberOfAttackers) {
+			scoresToGive++
+		}
+	}
+	s.scoreService.AwardTeam(player.TeamTypeAttacker, scoresToGive, "For every 100 percent challenges")
+
+	// Add points for defender team for uptime
+	failPercent := s.combatService.GetDefenseFailPercent()
+	uptime := 100 - failPercent
+	defAward := 1
+	if uptime >= 97 {
+		defAward = 10
+	} else if uptime >= 93 {
+		defAward = 9
+	} else if uptime >= 89 {
+		defAward = 8
+	} else if uptime >= 85 {
+		defAward = 7
+	} else if uptime >= 82 {
+		defAward = 6
+	} else if uptime >= 79 {
+		defAward = 5
+	} else if uptime >= 75 {
+		defAward = 4
+	} else if uptime >= 70 {
+		defAward = 3
+	} else if uptime >= 65 {
+		defAward = 2
+	} else {
+		defAward = 1
+	}
+	s.scoreService.AwardTeam(player.TeamTypeDefender, defAward, "For overall uptime")
 }
 
 // Constructor for engine service

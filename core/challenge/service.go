@@ -20,6 +20,8 @@ type IService interface {
 	IsValidSolutionToDefaultModule(m Model, hints []interface{}, solutions []interface{}) (bool, error)
 	// Returns if this is the first module of the defender
 	IsFirstModule(Model) bool
+	// Returns the number of unique challenges
+	GetNumberOfUniqueChallenges() int
 }
 
 type Service struct {
@@ -77,4 +79,12 @@ func (s Service) IsFirstModule(m Model) bool {
 		}
 	}
 	return numberOfModules == 0
+}
+
+func (s Service) GetNumberOfUniqueChallenges() int {
+	unique := map[string]uint8{}
+	for _, c := range s.repository.GetChallenges() {
+		unique[c.ID] = 1
+	}
+	return len(unique)
 }

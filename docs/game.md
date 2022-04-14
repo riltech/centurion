@@ -90,7 +90,7 @@ At the end of the game your team acquires extra points based on your ability to 
 Individual scoring
 * You get 1 point if you have at least 1 challenge installed
 * You get 1 point for every successful defense flow (even if the attack is successful)
-* You get 1 point for every challenge solved, but not more than 50% of the attackers
+* You get 1 point for every challenge solved by atleast 1 attacker, but not more than 50% of the attackers
 
 Team scoring
 

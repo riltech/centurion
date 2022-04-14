@@ -23,4 +23,16 @@ func TestExitHandler(t *testing.T) {
 	case value := <-funcRan:
 		assert.Equal(t, uint8(1), value)
 	}
+
+	exit = NewExitHandler()
+	exit.On(func() {
+		funcRan <- 1
+	})
+	exit.Trigger()
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatal("Exit handler did not run cleanup in time")
+	case value := <-funcRan:
+		assert.Equal(t, uint8(1), value)
+	}
 }
