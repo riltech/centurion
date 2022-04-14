@@ -19,6 +19,8 @@ import (
 
 // Describes the interface of the engine controller
 type IConroller interface {
+	// Status endpoint
+	Ping(http.ResponseWriter, *http.Request, httprouter.Params)
 	// Endpoint for fetching currently available challenges
 	FetchChallanges(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	// Endpoint for installing defense modules
@@ -249,9 +251,14 @@ func (c Controller) InstallChallenge(w http.ResponseWriter, r *http.Request, _ h
 	})
 }
 
+func (c Controller) Ping(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	(*ResponseCreator)(nil).Empty200(w)
+}
+
 // Creates a new router
 func (c Controller) GetRouter() *httprouter.Router {
 	router := httprouter.New()
+	router.GET("/", c.Ping)
 	router.POST("/team/register", c.Register)
 	router.GET("/challenges", c.FetchChallanges)
 	router.POST("/challenges", c.InstallChallenge)

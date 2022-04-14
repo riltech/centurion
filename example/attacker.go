@@ -27,7 +27,9 @@ type IAttacker interface {
 
 // Describes an example client implementation
 type Attacker struct {
-	// Address of the server
+	// Host of the server
+	host string
+	// Websocket of the server
 	address url.URL
 	// Stops the client
 	stop chan uint8
@@ -37,9 +39,10 @@ type Attacker struct {
 var _ IAttacker = (*Attacker)(nil)
 
 // Constructor for the client
-func NewAttacker() IAttacker {
+func NewAttacker(host string) IAttacker {
 	return &Attacker{
-		address: url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/team/join"},
+		host:    host,
+		address: url.URL{Scheme: "ws", Host: host, Path: "/team/join"},
 		stop:    make(chan uint8, 1),
 	}
 }
@@ -54,7 +57,7 @@ func (a Attacker) attackDefendBotChallenge(ID string, conn *websocket.Conn) {
 	<-time.After(15 * time.Second)
 	logrus.Info("Attacker bot starts defender bot challenge")
 	client := http.Client{}
-	resp, err := client.Get("http://localhost:8080/challenges")
+	resp, err := client.Get(fmt.Sprintf("http://%s/challenges", a.host))
 	if err != nil {
 		logger.LogError(err)
 		return
@@ -101,7 +104,7 @@ func (a Attacker) Start() {
 		return
 	}
 	resp, err := client.Post(
-		"http://localhost:8080/team/register",
+		fmt.Sprintf("http://%s/team/register", a.host),
 		"application/json",
 		bytes.NewBuffer(b))
 	if err != nil {
@@ -128,7 +131,7 @@ func (a Attacker) Start() {
 		return
 	}
 	defer conn.Close()
-	resp, err = client.Get("http://localhost:8080/challenges")
+	resp, err = client.Get(fmt.Sprintf("http://%s/challenges", a.host))
 	if err != nil {
 		logger.LogError(err)
 		return

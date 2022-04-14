@@ -42,6 +42,7 @@ func main() {
 	combatRepository := combat.NewRepository()
 	combatService := combat.NewService(combatRepository)
 	engine := core.NewEngine(
+		spec.Port,
 		bus,
 		scoreService,
 		combatService,
@@ -73,13 +74,13 @@ func main() {
 	})
 	go engine.Start()
 	if spec.ExampleEnabled {
-		exampleAttacker = example.NewAttacker()
+		exampleAttacker = example.NewAttacker("localhost:8080")
 		go func() {
 			// Wait a bit before startup
 			<-time.After(2 * time.Second)
 			exampleAttacker.Start()
 		}()
-		exampleDefender = example.NewDefender()
+		exampleDefender = example.NewDefender("localhost:8080")
 		go func() {
 			// Wait a bit less before startup
 			// as the defender has to install the module

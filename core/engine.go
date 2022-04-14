@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -27,6 +28,7 @@ type IEngine interface {
 
 // Engine implementation
 type Engine struct {
+	port   int
 	bus    bus.IBus
 	router *httprouter.Router
 	server *http.Server
@@ -47,11 +49,11 @@ func (e *Engine) Start() {
 	e.router = e.ctrl.GetRouter()
 	e.server = &http.Server{
 		Handler:      e.router,
-		Addr:         ":8080",
+		Addr:         fmt.Sprintf(":%d", e.port),
 		WriteTimeout: 25 * time.Second,
 		ReadTimeout:  25 * time.Second,
 	}
-	logrus.Infoln("Engine starts listening on 8080")
+	logrus.Infof("Engine starts listening on %d", e.port)
 	if err := e.server.ListenAndServe(); err != nil {
 		logrus.Error(err)
 	}
@@ -72,6 +74,7 @@ func (e Engine) FinishGame() {
 
 // Constructor for Engine
 func NewEngine(
+	port int,
 	bus bus.IBus,
 	scoreService scoreboard.IService,
 	combatService combat.IService,
@@ -90,6 +93,7 @@ func NewEngine(
 		server: nil,
 
 		// Available as the instance is created
+		port:    port,
 		bus:     bus,
 		ctrl:    engine.NewController(bus, engineService, playerService, challengeService, scoreService),
 		service: engineService,

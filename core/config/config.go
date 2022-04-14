@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -8,6 +10,8 @@ import (
 type Specification struct {
 	// Describes if the example clients are enabled
 	ExampleEnabled bool `envconfig:"example_enabled"`
+	// Describes the port number to use
+	Port int `envconfing:"port" default:"8080"`
 }
 
 // Inits configuration
@@ -17,5 +21,6 @@ func Init() (*Specification, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(s.Port)
 	return &s, nil
 }

@@ -26,7 +26,9 @@ type IDefender interface {
 
 // Describes an example client
 type Defender struct {
-	// Address of the server
+	// Host of the server
+	host string
+	// Websocket address of the server
 	address url.URL
 	// Stops the client
 	stop chan uint8
@@ -36,9 +38,10 @@ type Defender struct {
 var _ IDefender = (*Defender)(nil)
 
 // Constructor for the client
-func NewDefender() IDefender {
+func NewDefender(host string) IDefender {
 	return &Defender{
-		address: url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/team/join"},
+		host:    host,
+		address: url.URL{Scheme: "ws", Host: host, Path: "/team/join"},
 		stop:    make(chan uint8, 1),
 	}
 }
@@ -59,7 +62,7 @@ func (d Defender) Start() {
 		return
 	}
 	resp, err := client.Post(
-		"http://localhost:8080/team/register",
+		fmt.Sprintf("http://%s/team/register", d.host),
 		"application/json",
 		bytes.NewBuffer(b))
 	if err != nil {
@@ -113,7 +116,7 @@ func (d Defender) Start() {
 		logger.LogError(err)
 		return
 	}
-	resp, err = client.Post("http://localhost:8080/challenges", "application/json", bytes.NewBuffer(b))
+	resp, err = client.Post(fmt.Sprintf("http://%s/challenges", d.host), "application/json", bytes.NewBuffer(b))
 	if err != nil {
 		logger.LogError(err)
 		return
