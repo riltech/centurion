@@ -143,7 +143,7 @@ func (s Service) IsFifthUniqueSolution(attackerID string, challengeID string) bo
 	if _, ok := uniqueCompleted[challengeID]; !ok {
 		toStartWith++
 	}
-	for _ = range uniqueCompleted {
+	for range uniqueCompleted {
 		toStartWith++
 	}
 	return toStartWith%5 == 0
@@ -155,6 +155,9 @@ func (s Service) GetOverallAttackerSuccessPrecent(numberOfUniqueChallenges int) 
 		if a.CombatState == CombatStateAttackSucceeded {
 			uniques[a.ChallengeID] = 1
 		}
+	}
+	if numberOfUniqueChallenges == 0 {
+		return 100
 	}
 	return int((float32(len(uniques)) / float32(numberOfUniqueChallenges)) * 100)
 }
