@@ -11,6 +11,7 @@ import (
 	"github.com/riltech/centurion/core/challenge"
 	"github.com/riltech/centurion/core/combat"
 	"github.com/riltech/centurion/core/engine"
+	"github.com/riltech/centurion/core/logger"
 	"github.com/riltech/centurion/core/player"
 	"github.com/riltech/centurion/core/scoreboard"
 	"github.com/sirupsen/logrus"
@@ -55,7 +56,7 @@ func (e *Engine) Start() {
 	}
 	logrus.Infof("Engine starts listening on %d", e.port)
 	if err := e.server.ListenAndServe(); err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 	}
 }
 

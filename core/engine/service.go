@@ -75,7 +75,7 @@ func (s *Service) sendError(ID string, message string) (isConnectionStillAlive b
 			return
 		}
 		if _, err := s.playerService.SetPlayerOnlineStatus(ID, false); err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 		}
 	}(&isConnectionStillAlive)
 	if s == nil {
@@ -97,7 +97,7 @@ func (s *Service) sendError(ID string, message string) (isConnectionStillAlive b
 		},
 		Message: message,
 	}); err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		s.closeConnection(ID)
 		isConnectionStillAlive = false
 		return
@@ -114,7 +114,7 @@ func (s *Service) sendResponseOrBreakConnection(ID string, message interface{}) 
 			return
 		}
 		if _, err := s.playerService.SetPlayerOnlineStatus(ID, false); err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 		}
 	}(&isConnectionStillAlive)
 	s.mux.RLock()
@@ -153,7 +153,7 @@ func (s *Service) attacker(ID string) error {
 			break
 		}
 		if err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 			s.closeConnection(ID)
 			break
 		}
@@ -169,7 +169,7 @@ func (s *Service) attacker(ID string) error {
 			var detailedEvent dto.AttackEvent
 			err = json.Unmarshal(b, &detailedEvent)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Could not parse Attack Event"); !stillActive {
 					break
 				}
@@ -177,7 +177,7 @@ func (s *Service) attacker(ID string) error {
 			}
 			target, err := s.challengeService.FindByID(detailedEvent.TargetID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Invalid challenge ID"); !stillActive {
 					break
 				}
@@ -186,7 +186,7 @@ func (s *Service) attacker(ID string) error {
 			if target.Type == challenge.ChallengeTypeDefault {
 				hints, err := s.challengeService.GenerateHintForDefault(target)
 				if err != nil {
-					logrus.Error(err)
+					logger.LogError(err)
 					if stillActive := s.sendError(ID, err.Error()); !stillActive {
 						break
 					}
@@ -213,7 +213,7 @@ func (s *Service) attacker(ID string) error {
 			}
 			creator, err := s.playerService.FindByID(target.CreatorID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Challenge owner could not be retrieved"); !stillActive {
 					break
 				}
@@ -228,7 +228,7 @@ func (s *Service) attacker(ID string) error {
 			}
 			err = s.combatService.AddCombat(newCombat)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Combat could not be created, please try again"); !stillActive {
 					break
 				}
@@ -237,7 +237,7 @@ func (s *Service) attacker(ID string) error {
 			if !creator.Online {
 				logrus.Infof("Creator is not online to defend %s", spew.Sdump(creator))
 				if _, err = s.combatService.UpdateCombatState(newCombat.ID, combat.CombatStateDefenseFailed); err != nil {
-					logrus.Error(err)
+					logger.LogError(err)
 				}
 				// TODO: There should be a point reduction or increase
 				if isConnectionStillAlive := s.sendResponseOrBreakConnection(ID, dto.DefenderFailedToDefendEvent{
@@ -250,7 +250,7 @@ func (s *Service) attacker(ID string) error {
 				}
 			} else {
 				if _, err = s.combatService.UpdateCombatState(newCombat.ID, combat.CombatStateDefenseRequested); err != nil {
-					logrus.Error(err)
+					logger.LogError(err)
 				}
 				attacker, _ := s.playerService.FindByID(ID)
 				s.bus.Send(&bus.BusEvent{
@@ -323,7 +323,7 @@ func (s *Service) attacker(ID string) error {
 			}
 			creator, err := s.playerService.FindByID(target.CreatorID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Challenge owner could not be retrieved"); !stillActive {
 					break
 				}
@@ -331,7 +331,7 @@ func (s *Service) attacker(ID string) error {
 			}
 			ongoingCombat, err := s.combatService.FindByAttackerAndChallenge(ID, target.ID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "No combat found, first initiate an attack"); !stillActive {
 					break
 				}
@@ -339,7 +339,7 @@ func (s *Service) attacker(ID string) error {
 			}
 			if !creator.Online {
 				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateDefenseFailed); err != nil {
-					logrus.Error(err)
+					logger.LogError(err)
 				}
 				// Add 1 point to the attacker
 				if err = s.scoreService.AddPoint(ID, 1); err != nil {
@@ -355,7 +355,7 @@ func (s *Service) attacker(ID string) error {
 				}
 			} else {
 				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateSolutionEvaluationRequested); err != nil {
-					logrus.Error(err)
+					logger.LogError(err)
 				}
 				// if the connection is not alive here that's the problem of the potential
 				// go routine handling the given defender
@@ -382,7 +382,7 @@ func (s *Service) closeConnection(ID string) {
 	if conn, ok := s.activeConnections[ID]; ok {
 		err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(200, "OK"))
 		if err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 		}
 		conn.Close()
 	}
@@ -406,7 +406,7 @@ func (s *Service) defender(ID string) error {
 			break
 		}
 		if err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 			s.closeConnection(ID)
 			break
 		}
@@ -422,7 +422,7 @@ func (s *Service) defender(ID string) error {
 		if event.Type == dto.SocketEventTypeDefendAction {
 			var detailedEvent dto.DefendActionEvent
 			if err = json.Unmarshal(b, &detailedEvent); err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Could not parse Defend Action Event"); !stillActive {
 					break
 				}
@@ -430,14 +430,14 @@ func (s *Service) defender(ID string) error {
 			}
 			ongoingCombat, err := s.combatService.FindByID(detailedEvent.CombatID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Invalid combat ID"); !stillActive {
 					break
 				}
 				continue
 			}
 			if ongoingCombat.IsInFinalState() {
-				logrus.Error(fmt.Errorf("%s combat is already over", ongoingCombat.ID))
+				logger.LogError(fmt.Errorf("%s combat is already over", ongoingCombat.ID))
 				if stillActive := s.sendError(ID, "Combat is already over, state is: "+ongoingCombat.CombatState); !stillActive {
 					break
 				}
@@ -445,7 +445,7 @@ func (s *Service) defender(ID string) error {
 			}
 			attacker, err := s.playerService.FindByID(ongoingCombat.AttackerID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Invalid attacker ID in Combat"); !stillActive {
 					break
 				}
@@ -454,7 +454,7 @@ func (s *Service) defender(ID string) error {
 			if !attacker.Online {
 				logrus.Infof("Attacker is offline %s", spew.Sdump(attacker))
 				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateAttackFailed); err != nil {
-					logrus.Error(err)
+					logger.LogError(err)
 				}
 				if isConnectionStillAlive := s.sendResponseOrBreakConnection(ID, dto.AttackerFailedToAttackEvent{
 					SocketEvent: dto.SocketEvent{
@@ -467,7 +467,7 @@ func (s *Service) defender(ID string) error {
 				}
 			} else {
 				if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, combat.CombatStateAttackerChallenged); err != nil {
-					logrus.Error(err)
+					logger.LogError(err)
 				}
 				// if the connection is not alive here that's the problem of the potential
 				// go routine handling the given defender
@@ -484,7 +484,7 @@ func (s *Service) defender(ID string) error {
 		if event.Type == dto.SocketEventTypeSolutionEvaluation {
 			var detailedEvent dto.SolutionEvaluationEvent
 			if err = json.Unmarshal(b, &detailedEvent); err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Could not parse Solution Evaluation Event"); !stillActive {
 					break
 				}
@@ -492,7 +492,7 @@ func (s *Service) defender(ID string) error {
 			}
 			ongoingCombat, err := s.combatService.FindByID(detailedEvent.CombatID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Invalid combat ID"); !stillActive {
 					break
 				}
@@ -506,7 +506,7 @@ func (s *Service) defender(ID string) error {
 			}
 			attacker, err := s.playerService.FindByID(ongoingCombat.AttackerID)
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				if stillActive := s.sendError(ID, "Invalid attacker ID in Combat"); !stillActive {
 					break
 				}
@@ -537,7 +537,7 @@ func (s *Service) defender(ID string) error {
 				}
 			}
 			if _, err = s.combatService.UpdateCombatState(ongoingCombat.ID, stateToUpdate); err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 			}
 			target, _ := s.challengeService.FindByID(ongoingCombat.ChallengeID)
 			s.bus.Send(&bus.BusEvent{
@@ -588,6 +588,7 @@ func (s *Service) FinishGame() {
 	// Add points for defender team for uptime
 	failPercent := s.combatService.GetDefenseFailPercent()
 	uptime := 100 - failPercent
+	fmt.Println(failPercent, uptime)
 	defAward := 1
 	if uptime >= 97 {
 		defAward = 10
@@ -607,7 +608,7 @@ func (s *Service) FinishGame() {
 		defAward = 3
 	} else if uptime >= 65 {
 		defAward = 2
-	} else {
+	} else if uptime < 65 {
 		defAward = 1
 	}
 	s.scoreService.AwardTeam(player.TeamTypeDefender, defAward, "For overall uptime")

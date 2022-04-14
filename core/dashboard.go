@@ -10,6 +10,7 @@ import (
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/combat"
 	"github.com/riltech/centurion/core/dashboard"
+	"github.com/riltech/centurion/core/logger"
 	"github.com/riltech/centurion/core/player"
 	"github.com/riltech/centurion/core/scoreboard"
 	"github.com/sirupsen/logrus"
@@ -98,7 +99,7 @@ func (d Dashboard) Start() {
 		case value := <-d.playerRegisteredCh:
 			event, err := value.DecodeRegistrationEvent()
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				continue
 			}
 			eventLog.Push(fmt.Sprintf("[Registration] %s registered to be a %s", event.Name, event.Team))
@@ -107,7 +108,7 @@ func (d Dashboard) Start() {
 		case value := <-d.playerJoinedCh:
 			event, err := value.DecodePlayerJoinedEvent()
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				continue
 			}
 			eventLog.Push(fmt.Sprintf("[Join] %s joined %s team", event.Name, event.Team))
@@ -117,7 +118,7 @@ func (d Dashboard) Start() {
 		case value := <-d.defenseFailedCh:
 			event, err := value.DecodeDefenseFailedEvent()
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				continue
 			}
 			eventLog.Push(fmt.Sprintf("[Defense] %s failed a defense against %s", event.DefenderName, event.AttackerName))
@@ -126,7 +127,7 @@ func (d Dashboard) Start() {
 		case value := <-d.attackFinishedCh:
 			event, err := value.DecodeAttackFinishedEvent()
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				continue
 			}
 			result := "resolved"
@@ -140,7 +141,7 @@ func (d Dashboard) Start() {
 		case value := <-d.attackInitiatedCh:
 			event, err := value.DecodeAttackInitiatedEvent()
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				continue
 			}
 			eventLog.Push(fmt.Sprintf("[Combat] %s initiated attack on '%s' challenge", event.AttackerName, event.ChallengeName))
@@ -149,7 +150,7 @@ func (d Dashboard) Start() {
 		case value := <-d.defenseModuleInstalledCh:
 			event, err := value.DecodeDefenseModuleInstalledEvent()
 			if err != nil {
-				logrus.Error(err)
+				logger.LogError(err)
 				continue
 			}
 			eventLog.Push(fmt.Sprintf("[Defense] %s installed new module '%s'", event.CreatorName, event.Name))

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/riltech/centurion/core/logger"
 )
 
 // Describes a repository for the combat package
@@ -80,7 +80,7 @@ func (r *Repository) archiveElement(index int) {
 		return
 	}
 	if len(r.combats)-1 > index {
-		logrus.Error(fmt.Errorf("Could not archieve %d combat because len is %d", index, len(r.combats)))
+		logger.LogError(fmt.Errorf("Could not archieve %d combat because len is %d", index, len(r.combats)))
 		return
 	}
 	r.archive = append(r.archive, r.combats[index])

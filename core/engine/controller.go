@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -12,9 +13,9 @@ import (
 	"github.com/riltech/centurion/core/bus"
 	"github.com/riltech/centurion/core/challenge"
 	"github.com/riltech/centurion/core/engine/dto"
+	"github.com/riltech/centurion/core/logger"
 	"github.com/riltech/centurion/core/player"
 	"github.com/riltech/centurion/core/scoreboard"
-	"github.com/sirupsen/logrus"
 )
 
 // Describes the interface of the engine controller
@@ -70,7 +71,7 @@ func (c Controller) cleanUp(w http.ResponseWriter) {
 	if err == nil {
 		return
 	}
-	logrus.Error(err)
+	logger.LogError(fmt.Errorf("%+v", err))
 	(*ResponseCreator)(nil).InternalServerError(w)
 }
 
@@ -169,18 +170,18 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request, _ httproute
 func (c Controller) PlayerJoin(w http.ResponseWriter, r *http.Request) {
 	connection, err := c.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logrus.Error("upgrade:", err)
+		logger.LogError(err)
 		return
 	}
 	defer connection.Close()
 	_, message, err := connection.ReadMessage()
 	if err != nil {
-		logrus.Error("SERVER | read:", err)
+		logger.LogError(err)
 		return
 	}
 	var join dto.JoinEvent
 	if err = json.Unmarshal(message, &join); err != nil {
-		logrus.Error("SERVER | Invalid join request")
+		logger.LogError(err)
 		return
 	}
 	c.engineService.Join(join, connection)
@@ -231,7 +232,7 @@ func (c Controller) InstallChallenge(w http.ResponseWriter, r *http.Request, _ h
 	}
 	if isFirstModule {
 		if err = c.scoreService.AddPoint(reqDTO.DefenderID, 1); err != nil {
-			logrus.Error(err)
+			logger.LogError(err)
 		}
 	}
 	c.bus.Send(&bus.BusEvent{

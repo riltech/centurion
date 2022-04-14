@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/riltech/centurion/core/engine/dto"
-	"github.com/sirupsen/logrus"
+	"github.com/riltech/centurion/core/logger"
 )
 
 // Static pointer struct to provide functions for consistent responses
@@ -25,7 +25,7 @@ func (rc *ResponseCreator) BadRequest(w http.ResponseWriter, meta map[string]int
 		Meta:    meta,
 	})
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	w.Write(b)
@@ -40,7 +40,7 @@ func (rc *ResponseCreator) InternalServerError(w http.ResponseWriter) {
 		Meta:    nil,
 	})
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	w.Write(b)
@@ -55,7 +55,7 @@ func (rc *ResponseCreator) Empty200(w http.ResponseWriter) {
 		Meta:    nil,
 	})
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	w.Write(b)
@@ -66,7 +66,7 @@ func (rc *ResponseCreator) OK(w http.ResponseWriter, body interface{}) {
 	rc.jsonResponse(w)
 	b, err := json.Marshal(body)
 	if err != nil {
-		logrus.Error(err)
+		logger.LogError(err)
 		return
 	}
 	w.Write(b)

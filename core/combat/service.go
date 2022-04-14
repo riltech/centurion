@@ -100,6 +100,9 @@ func (s Service) GetDefenseFailPercent() int {
 			failedEvents = append(failedEvents, c)
 		}
 	}
+	if len(archive) == 0 {
+		return 0
+	}
 	return int(float32(len(failedEvents)) / float32(len(archive)) * 100)
 }
 
