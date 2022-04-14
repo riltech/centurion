@@ -15,6 +15,7 @@ Centurion needs a way to provide communication between these two packages. As th
 This event bus also provides a very easy way to introduce more and more business logic if we want to as any new package in this layer could work with the already defined events of the event bus therefore allowing the system to be almost infinitaly scalable in terms of code extension.
 
 In the following packages you can see very distinctive __"controller - service - repository - domain model"__ pattern:
+* combat
 * challenge
 * player
 * combat
